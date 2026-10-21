@@ -282,6 +282,7 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
         }
         bc.channels.invertMask   = elm["cinv"] | 0;
         bc.channels.is16bit      = elm["c16"] | false;
+        bc.channels.tailBits     = (uint8_t)constrain((int)(elm["ctail"] | 0), 0, 16);
         bc.channels.invertOutput = elm["cio"] | false;
         bc.channels.t0h  = elm["ct0h"] | 300;
         bc.channels.t0l  = elm["ct0l"] | 900;
@@ -1060,6 +1061,7 @@ void serializeConfig(JsonObject root) {
       for (uint8_t i = 0; i < cb.numChannels; i++) cmap.add(cb.channelColors[i]); // emit only active channels; deserializer guards with cmap.size()
       ins["cinv"] = cb.invertMask;
       ins["c16"]  = cb.is16bit;
+      if (cb.tailBits) ins["ctail"] = cb.tailBits;
       ins["cio"]  = cb.invertOutput;
       ins["ct0h"] = cb.t0h;
       ins["ct0l"] = cb.t0l;

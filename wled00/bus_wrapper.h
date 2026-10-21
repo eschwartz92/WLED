@@ -200,6 +200,7 @@ inline void resolveChannelLayout(BusChannelLayout& ch, uint8_t busType, uint8_t 
   }
   ch.invertMask = 0;
   ch.is16bit = busTypeIs16bit(busType);
+  ch.tailBits = busTypeTailBits(busType);
   ch.invertOutput = busType == TYPE_TM1814 || busType == TYPE_TM1815 || busType == TYPE_TM1914;
   const WLEDpixelBus::LedTiming timing = WLEDpixelBus::getProtocol(busType);
   ch.t0h = timing.t0h_ns; ch.t0l = timing.t0l_ns;
@@ -222,8 +223,6 @@ inline void applyTypeFraming(WLEDpixelBus::BusProperties& props, uint8_t busType
   } else if (busType == TYPE_SM16825) {
     props.suffixLen = WLEDpixelBus::SM16825_SUFFIX_LEN;
     memcpy(props.suffixData, SM16825_SUFFIX, sizeof(SM16825_SUFFIX));
-  } else if (busType == TYPE_G1151) {
-    props.tailBits = WLEDpixelBus::G1151_TAIL_BITS; // 10 extra bits per IC (lowest bits of a 26-bit WW value), pixels are bit-packed
   }
 }
 
@@ -236,6 +235,7 @@ inline WLEDpixelBus::BusProperties makeBusProperties(const BusChannelLayout& lay
   props.invertMask = layout.invertMask;
   props.is16bit = layout.is16bit;
   props.invertOutput = layout.invertOutput;
+  props.tailBits = layout.tailBits;
   props.timing = WLEDpixelBus::LedTiming(layout.t0h, layout.t0l, layout.t1h, layout.t1l, layout.trst);
   applyTypeFraming(props, protocolType);
   return props;

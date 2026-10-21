@@ -313,9 +313,11 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
         char cbt1h[7] = "CBt1h"; cbt1h[5] = offset+s; cbt1h[6] = 0;
         char cbt1l[7] = "CBt1l"; cbt1l[5] = offset+s; cbt1l[6] = 0;
         char cbrst[7] = "CBrst"; cbrst[5] = offset+s; cbrst[6] = 0;
+        char cbtl[6]  = "CBtl";  cbtl[4]  = offset+s; cbtl[5]  = 0;
         bc.channels.numChannels  = (uint8_t)constrain(request->arg(cbch).toInt(), 0, WLEDpixelBus::MAX_CUSTOM_CHANNELS);
         bc.channels.invertOutput = request->hasArg(cbio);
         bc.channels.is16bit      = request->hasArg(cbb);
+        bc.channels.tailBits     = (uint8_t)constrain(request->arg(cbtl).toInt(), 0, 16);
         bc.channels.t0h  = request->arg(cbt0h).toInt();
         bc.channels.t0l  = request->arg(cbt0l).toInt();
         bc.channels.t1h  = request->arg(cbt1h).toInt();
