@@ -1950,7 +1950,7 @@ void WS2812FX::setCCT(uint16_t k) {
 // direct=false immediately triggers an effect redraw
 void WS2812FX::setBrightness(uint8_t b, bool direct) {
   if (gammaCorrectBri && b > 0) {
-    (int)(powf((float)b / 255.0f, gammaCorrectVal) * 255.0f + 0.5f); // use gamma formula instead of gamma table: gamma table is only for color correction (has unity mapping if color correction is diabled)
+    b = (int)(powf((float)b / 255.0f, gammaCorrectVal) * 255.0f + 0.5f); // use gamma formula instead of gamma table: gamma table is only for color correction (has unity mapping if color correction is diabled)
     if (b == 0) b = 1; // dont go to 0 brigthness if input was non zero
   }
   if (_brightness == b) return;
