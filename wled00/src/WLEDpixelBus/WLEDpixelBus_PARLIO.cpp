@@ -744,7 +744,7 @@ bool ParlioBus::begin() {
   }
 
   // pass our encoded byte count so the context can size DMA buffers for the largest bus
-  const size_t srcBytes = (size_t)_numPixels * _encoder.getPixelBytes();
+  const size_t srcBytes = getPixelDataBytes(_numPixels);
   _channelIdx = _ctx->registerChannel(_pin, srcBytes, _inverted);
   if (_channelIdx < 0) {
     ParlioBusContext::release(_busNum);
