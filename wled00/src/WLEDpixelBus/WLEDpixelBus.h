@@ -336,7 +336,9 @@ protected:
     for (uint16_t i = 0; i < nBits; ) {
       const size_t   d     = dstBit + i;
       const uint8_t  shift = d & 7;
-      const uint8_t  take  = (nBits - i < 8u - shift) ? (nBits - i) : (8u - shift); // bits that fit into the current dst byte
+      const uint16_t left  = nBits - i;           // bits still to copy
+      const uint8_t  room  = 8 - shift;           // bits left in the current dst byte
+      const uint8_t  take  = (left < room) ? left : room;
       const uint16_t word  = ((uint16_t)src[i >> 3] << 8) | src[(i >> 3) + 1];
       const uint8_t  bits  = (word >> (16 - (i & 7) - take)) & ((1u << take) - 1);
       const uint8_t  pos   = 8 - shift - take;
