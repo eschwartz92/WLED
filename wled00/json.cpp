@@ -750,6 +750,31 @@ void serializeInfo(JsonObject root)
 
   leds["lc"] = totalLC;
 
+  // per-output diagnostics: started, send time, frames accepted/refused by the driver, start of the encoded frame
+  JsonArray busInfo = leds.createNestedArray(F("bus"));
+  for (size_t i = 0; i < BusManager::getNumBusses(); i++) {
+    const Bus* bus = BusManager::getBus(i);
+    if (!bus) continue;
+    JsonObject b = busInfo.createNestedObject();
+    b["t"]  = bus->getType();
+    b["ok"] = bus->isOk(); // false: failed to start (placeholder)
+    if (!bus->isOk() || !bus->isDigital() || bus->is2Pin()) continue;
+    const BusDigital* bd = static_cast<const BusDigital*>(bus); // only started one-wire buses are BusDigital
+    b["drv"] = bd->getDriverType();
+    b["us"]  = bd->getFrameTimeUs();
+    b["sh"]  = bd->getShowCount(true);
+    b["shf"] = bd->getShowCount(false);
+    const WLEDpixelBus::PixelBus* pb = bd->getPixelBus();
+    if (pb && pb->getEncodeBuffer()) {
+      b["enc"] = pb->getEncodeBufferSize();
+      char hex[2*24+1];
+      const size_t n = min(pb->getEncodeBufferSize(), (size_t)24);
+      for (size_t k = 0; k < n; k++) sprintf(hex + 2*k, "%02x", pb->getEncodeBuffer()[k]);
+      hex[2*n] = 0;
+      b["hex"] = hex;
+    }
+  }
+
   leds[F("rgbw")] = strip.hasRGBWBus(); // deprecated, use info.leds.lc
   leds[F("wv")]   = totalLC & 0x02;     // deprecated, true if white slider should be displayed for any segment
   leds["cct"]     = totalLC & 0x04;     // deprecated, use info.leds.lc

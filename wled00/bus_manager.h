@@ -253,6 +253,8 @@ class BusDigital : public Bus {
     uint16_t getMaxCurrent() const override  { return _milliAmpsMax; }
     uint8_t  getDriverType() const override  { return _driverType; }
     uint32_t getFrameTimeUs() const override;
+    const WLEDpixelBus::PixelBus* getPixelBus() const { return _busPtr; } // diagnostics (/json/info)
+    uint32_t getShowCount(bool ok) const { return ok ? _showOk : _showFail; }
     void     setCurrentLimit(uint16_t milliAmps) { _milliAmpsLimit = milliAmps; }
     void     setBrightness(uint8_t b) override;
     void     estimateCurrent(); // estimate used current from summed colors
@@ -277,6 +279,7 @@ class BusDigital : public Bus {
     uint16_t _milliAmpsLimit;
     uint16_t _frequencykHz;
     uint32_t _colorSum = 0;           // sum of brightness-scaled channel bytes; updated in setPixelColor() when ABL active
+    uint32_t _showOk = 0, _showFail = 0; // frames the driver accepted / refused (diagnostics)
     WLEDpixelBus::BusProperties _busProperties; // assembled wire descriptor (from BusConfig), also used by begin() for the prefix upload
     WLEDpixelBus::PixelBus* _busPtr = nullptr;
     BusChannelLayout _channels; // configured channel layout as passed in BusConfig (user-entered when custom)

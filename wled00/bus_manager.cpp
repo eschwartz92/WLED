@@ -347,7 +347,7 @@ void BusDigital::show() {
     _totalBusBri = (_totalBusBri * _bri) / 255;      // total applied brightness for use in restoreColorLossy (see applyBriLimit())
   else
     _totalBusBri = _bri; // if not using ABL, total bus brightness is just the bus brightness
-  _busPtr->show();
+  if (_busPtr->show()) _showOk++; else _showFail++;
 }
 
 bool BusDigital::canShow() const {
