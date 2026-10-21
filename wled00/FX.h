@@ -71,6 +71,7 @@ extern byte realtimeMode;           // used in getMappedPixelIndex()
   #define MIN_FRAME_DELAY  8                                              // 8266 legacy MIN_SHOW_DELAY
 #endif
 #define FPS_UNLIMITED    0
+#define FPS_AUTO         255                                             // frame time follows the slowest output, see setTargetFps()
 
 // FPS calculation (can be defined as compile flag for debugging)
 #ifndef FPS_CALC_AVG

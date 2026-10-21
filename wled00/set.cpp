@@ -213,7 +213,7 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
     uint8_t cctBlending = request->arg(F("CB")).toInt();
     Bus::setCCTBlend(cctBlending);
     Bus::setGlobalAWMode(request->arg(F("AW")).toInt());
-    strip.setTargetFps(request->arg(F("FR")).toInt());
+    strip.setTargetFps(request->hasArg(F("FRA")) ? FPS_AUTO : request->arg(F("FR")).toInt());
 
     bool busesChanged = false;
     for (int s = 0; s < 36; s++) { // theoretical limit is 36 : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"

@@ -135,6 +135,7 @@ class Bus {
     virtual uint16_t getFrequency() const                       { return 0U; }
     virtual uint16_t getLEDCurrent() const                      { return 0; }
     virtual uint16_t getUsedCurrent() const                     { return 0; }
+    virtual uint32_t getFrameTimeUs() const                     { return 0; } // time to send one frame (data + reset gap), 0 = not known
     virtual uint16_t getMaxCurrent() const                      { return 0; }
     virtual uint8_t  getDriverType() const                      { return BUSDRV_RMT; }  // default to RMT (overridden by BusDigital)
     virtual size_t   getBusSize() const                         { return sizeof(Bus); } // currently unused
@@ -251,6 +252,7 @@ class BusDigital : public Bus {
     uint16_t getUsedCurrent() const override { return _milliAmpsTotal; }
     uint16_t getMaxCurrent() const override  { return _milliAmpsMax; }
     uint8_t  getDriverType() const override  { return _driverType; }
+    uint32_t getFrameTimeUs() const override;
     void     setCurrentLimit(uint16_t milliAmps) { _milliAmpsLimit = milliAmps; }
     void     setBrightness(uint8_t b) override;
     void     estimateCurrent(); // estimate used current from summed colors
@@ -495,6 +497,7 @@ namespace BusManager {
   void        clearPixels(size_t n); // zero all bus encode buffers for first n physical pixels
   void        show();
   bool        canAllShow();
+  uint32_t    getMaxFrameTimeUs(); // longest time any bus takes to send one frame, in us
   inline void setStatusPixel(uint32_t c) { for (auto &bus : busses) bus->setStatusPixel(c);}
   inline void setBrightness(uint8_t b)   { for (auto &bus : busses) bus->setBrightness(b); }
   // for setSegmentCCT(), cct can only be in [-1,255] range; allowWBCorrection will convert it to K
