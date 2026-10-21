@@ -347,11 +347,18 @@ protected:
       i += take;
     }
   }
-  // copy nBits from src starting at bit srcBit into dst (MSB first, starting at bit 0), dst must be zeroed
+  // copy nBits from src starting at bit srcBit into dst (MSB first, starting at bit 0), one byte per step;
+  // only source bytes that hold requested bits are read
   static void readBits(uint8_t* dst, const uint8_t* src, size_t srcBit, uint16_t nBits) {
-    for (uint16_t i = 0; i < nBits; i++) {
-      const size_t s = srcBit + i;
-      if (src[s >> 3] & (0x80 >> (s & 7))) dst[i >> 3] |= 0x80 >> (i & 7);
+    const uint8_t  shift = srcBit & 7;
+    const uint8_t  room  = 8 - shift;            // bits used from the first source byte
+    const uint8_t* in    = src + (srcBit >> 3);
+    for (uint16_t i = 0; i < nBits; i += 8) {
+      const uint16_t left = nBits - i;           // bits still to copy
+      uint8_t b = in[i >> 3] << shift;
+      if (shift && left > room) b |= in[(i >> 3) + 1] >> room;
+      if (left < 8) b &= 0xFF << (8 - left);     // last partial byte
+      dst[i >> 3] = b;
     }
   }
   inline uint16_t packedPixelBits() const { return (uint16_t)_encoder.getPixelBytes() * 8 + _tailBits; }
