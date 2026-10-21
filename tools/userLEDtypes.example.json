@@ -7,6 +7,7 @@
       "channels": ["G", "R", "B", "CW", "WW"],
       "bits": 16,
       "tail": 10,
+      "timing": { "t0h": 400, "t0l": 850, "t1h": 800, "t1l": 450, "reset": 300 },
       "notes": "90 bits per IC: 16-bit G, R, B, CW, WW followed by 10 bits (finer warm white, sent as 0)"
     },
     {

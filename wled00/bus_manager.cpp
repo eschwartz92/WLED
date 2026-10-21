@@ -1467,11 +1467,21 @@ static String LEDTypesToJson(const std::vector<LEDType>& types) {
     int capabilities = Bus::hasRGB(type.id) | Bus::hasWhite(type.id)<<1 | Bus::hasCCT(type.id)<<2 | Bus::is16bit(type.id)<<4 | Bus::mustRefresh(type.id)<<5;
     char str[256];
     WLEDpixelBus::LedTiming timing = WLEDpixelBus::getProtocol(type.id);
-    sprintf_P(str, PSTR("{i:%d,c:%d,t:\"%s\",n:\"%s\",t0h:%u,t0l:%u,t1h:%u,t1l:%u,trst:%u,tb:%u},"),
+    int len = sprintf_P(str, PSTR("{i:%d,c:%d,t:\"%s\",n:\"%s\",t0h:%u,t0l:%u,t1h:%u,t1l:%u,trst:%u,tb:%u"),
               type.id, capabilities, type.type, type.name,
               (unsigned)timing.t0h_ns, (unsigned)timing.t0l_ns,
               (unsigned)timing.t1h_ns, (unsigned)timing.t1l_ns,
               (unsigned)timing.reset_us, (unsigned)busTypeTailBits(type.id));
+    if (Bus::isDigital(type.id) && !Bus::is2Pin(type.id)) {
+      // wire channels at the default color order (one digit per channel, see ChannelSource) and inverted output,
+      // the settings page applies the color order to it when prefilling "Customize bus"
+      BusChannelLayout ch;
+      resolveChannelLayout(ch, type.id, 0);
+      len += sprintf_P(str + len, PSTR(",m:\""));
+      for (uint8_t i = 0; i < ch.numChannels; i++) str[len++] = '0' + ch.channelColors[i];
+      len += sprintf_P(str + len, PSTR("\"%s"), ch.invertOutput ? ",io:1" : "");
+    }
+    strcpy_P(str + len, PSTR("},"));
     json += str;
   }
   return json;
