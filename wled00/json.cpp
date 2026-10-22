@@ -724,6 +724,15 @@ void serializeInfo(JsonObject root)
   leds[F("count")] = strip.getLengthTotal();
   leds[F("pwr")] = BusManager::currentMilliamps();
   leds["fps"] = strip.getFps();
+  { // CPU time per frame in us, averaged over the frames since the last /json/info (diagnostics)
+    const FrameTiming t = strip.takeTiming();
+    if (t.frames) {
+      JsonObject tim = leds.createNestedObject(F("tim"));
+      tim["n"] = t.frames;  tim["fx"] = t.fx / t.frames;  tim["cmp"] = t.compose / t.frames;
+      tim["wait"] = t.wait / t.frames;  tim["paint"] = t.paint / t.frames;  tim["send"] = t.send / t.frames;
+      tim["max"] = t.maxCpu;
+    }
+  }
   leds[F("maxpwr")] = BusManager::currentMilliamps()>0 ? BusManager::ablMilliampsMax() : 0;
   leds[F("maxseg")] = WS2812FX::getMaxSegments();
   //leds[F("actseg")] = strip.getActiveSegmentsNum();
