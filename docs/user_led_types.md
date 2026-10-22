@@ -19,7 +19,7 @@ See `tools/userLEDtypes.example.json` for a working example (Govee G1151).
 | `base` | yes | Built-in single-wire digital type ID the bus is stored as (driver and default timing), e.g. `22` = WS281x |
 | `channels` | yes | 1-6 wire channels in transmit order, each one of `R`, `G`, `B`, `W`, `WW`, `CW` |
 | `bits` | no | `8` (default) or `16` bits per channel |
-| `gaps` | no | Zero bits sent after each channel, one 0-16 value per channel (missing = 0). When any is > 0 pixels are bit-packed (not byte aligned). Govee G1151: `[4, 4, 0, 2, 0]` |
+| `gaps` | no | Zero bits sent before each channel, one 0-16 value per channel (missing = 0). When any is > 0 pixels are bit-packed (not byte aligned). Govee G1151: `[2, 2, 2, 2, 2]` |
 | `invert` | no | Channel indexes (0-based) whose value is inverted |
 | `invertOutput` | no | Invert the data signal polarity |
 | `timing` | no | `t0h`, `t0l`, `t1h`, `t1l` in ns and `reset` in µs; missing values come from `base` |

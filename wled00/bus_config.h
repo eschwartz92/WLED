@@ -32,7 +32,7 @@ constexpr bool busTypeIsPWM(uint8_t type)       { return (type >= TYPE_ANALOG_MI
 constexpr bool busTypeIsVirtual(uint8_t type)   { return (type >= TYPE_VIRTUAL_MIN && type <= TYPE_VIRTUAL_MAX); }
 constexpr bool busTypeIsHub75(uint8_t type)     { return (type >= TYPE_HUB75MATRIX_MIN && type <= TYPE_HUB75MATRIX_MAX); }
 constexpr bool busTypeIs16bit(uint8_t type)     { return ledTypeHas(type, LT_16BIT); }
-inline const uint8_t* busTypeGapBits(uint8_t type) { // zero bits after each wire channel (bit-packed types)
+inline const uint8_t* busTypeGapBits(uint8_t type) { // zero bits before each wire channel (bit-packed types)
   static constexpr uint8_t none[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {};
   const LedTypeDef* t = ledType(type);
   return t ? t->gaps : none;
@@ -63,7 +63,7 @@ struct BusChannelLayout {
   bool     is16bit      = false;  // 2 wire bytes per channel (UCS8903/04, SM16825)
   bool     invertOutput = false;  // invert the hardware output signal polarity
   bool     custom       = false;  // user-entered override active (replaces CustomBusConfig::active())
-  uint8_t  gapBits[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {}; // zero bits sent after each wire channel, bit-packed when any > 0 (Govee G1151: 4,4,0,2,0)
+  uint8_t  gapBits[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {}; // zero bits sent before each wire channel, bit-packed when any > 0 (Govee G1151: 2,2,2,2,2)
   uint16_t t0h = 300;  // '0' bit high time, ns
   uint16_t t0l = 900;  // '0' bit low  time, ns
   uint16_t t1h = 700;  // '1' bit high time, ns

@@ -1527,7 +1527,7 @@ static String LEDTypesToJson(const std::vector<LEDType>& types) {
       len += sprintf_P(str + len, PSTR("\"%s"), ch.invertOutput ? ",io:1" : "");
       bool hasGaps = false;
       for (uint8_t i = 0; i < ch.numChannels; i++) hasGaps |= ch.gapBits[i] > 0;
-      if (hasGaps) { // zero bits after each channel, comma separated (bit-packed types)
+      if (hasGaps) { // zero bits before each channel, comma separated (bit-packed types)
         len += sprintf_P(str + len, PSTR(",gp:\""));
         for (uint8_t i = 0; i < ch.numChannels; i++) len += sprintf_P(str + len, PSTR("%s%u"), i ? "," : "", (unsigned)ch.gapBits[i]);
         str[len++] = '"';

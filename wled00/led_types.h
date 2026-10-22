@@ -23,7 +23,7 @@ struct LedTypeDef {
   char     layout[7]; // wire channels at color order 0 ("GRB"): R, G, B, W (WW on CCT types), C (CW), '-' = unused byte
   uint16_t t0h, t0l, t1h, t1l; // bit timing, ns
   uint16_t trst;               // reset/latch gap, us
-  uint8_t  gaps[WLEDpixelBus::MAX_CUSTOM_CHANNELS]; // zero bits after each wire channel (bit-packed types)
+  uint8_t  gaps[WLEDpixelBus::MAX_CUSTOM_CHANNELS]; // zero bits before each wire channel (bit-packed types)
 };
 
 inline constexpr LedTypeDef LED_TYPE_TABLE[] = {
@@ -41,7 +41,7 @@ inline constexpr LedTypeDef LED_TYPE_TABLE[] = {
   { TYPE_FW1906,         LT_W | LT_CCT,                      "GRBCW-", 400,  850,  800,  450,  300, {} },
   { TYPE_WS2805,         LT_W | LT_CCT,                      "GRBWC",  300,  790,  790,  300,  300, {} },
   { TYPE_SM16825,        LT_W | LT_CCT | LT_16BIT,           "RGBCW",  300,  900,  900,  300,   80, {} },
-  { TYPE_G1151,          LT_W | LT_CCT | LT_16BIT,           "GRBCW",  400,  850,  800,  450,  300, {4, 4, 0, 2, 0, 0} },
+  { TYPE_G1151,          LT_W | LT_CCT | LT_16BIT,           "GRBCW",  400,  850,  800,  450,  300, {2, 2, 2, 2, 2, 0} }, // 5 x (2 control bits + 16-bit value) = 90 bits
   { TYPE_WS2812_1CH_X3,  LT_W | LT_NORGB,                    "GRBW",   300,  900,  700,  500,  100, {} }, // wire map fixed in resolveChannelLayout()
   { TYPE_WS2812_WWA,     LT_W | LT_CCT | LT_NORGB,           "GRBWC",  300,  900,  700,  500,  100, {} }, // wire map fixed in resolveChannelLayout()
   { TYPE_WS2801,         0,                                  "RBG",    500,  500,  500,  500, 1000, {} },

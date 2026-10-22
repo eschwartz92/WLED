@@ -6,9 +6,9 @@
       "base": 22,
       "channels": ["G", "R", "B", "CW", "WW"],
       "bits": 16,
-      "gaps": [4, 4, 0, 2, 0],
+      "gaps": [2, 2, 2, 2, 2],
       "timing": { "t0h": 400, "t0l": 850, "t1h": 800, "t1l": 450, "reset": 300 },
-      "notes": "90 bits per IC: 16-bit G, R, B, CW, WW with 4, 4, 0, 2, 0 zero bits after each"
+      "notes": "90 bits per IC: 16-bit G, R, B, CW, WW, each after 2 control bits (sent as 0)"
     },
     {
       "name": "Example: RGBW with inverted white",
