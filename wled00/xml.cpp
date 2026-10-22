@@ -360,7 +360,8 @@ void getSettingsJS(byte subPage, Print& settingsScript)
     printSetFormCheckbox(settingsScript,PSTR("IC"),cctICused);
     printSetFormCheckbox(settingsScript,PSTR("CR"),strip.cctFromRgb);
     printSetFormValue(settingsScript,PSTR("CB"),Bus::getCCTBlend());
-    printSetFormValue(settingsScript,PSTR("FR"),strip.getTargetFps());
+    printSetFormCheckbox(settingsScript,PSTR("FRA"),strip.getTargetFps() == FPS_AUTO);
+    printSetFormValue(settingsScript,PSTR("FR"),strip.getTargetFps() == FPS_AUTO ? 1000 / strip.getFrameTime() : strip.getTargetFps()); // Auto: the rate it picked
     printSetFormValue(settingsScript,PSTR("AW"),Bus::getGlobalAWMode());
 
     unsigned sumMa = 0;

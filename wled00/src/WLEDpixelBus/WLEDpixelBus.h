@@ -645,6 +645,7 @@ public:
   }
 
   size_t   getEncodeBufferSize() const { return _encodeBufferSize; }
+  const uint8_t* getEncodeBuffer() const { return _encodeBuffer; } // diagnostics (/json/info)
   virtual uint16_t getNumPixels() const { return _numPixels; }
   void setNumPixels(uint16_t n) { _numPixels = n; }
 };

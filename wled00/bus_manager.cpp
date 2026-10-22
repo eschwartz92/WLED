@@ -347,7 +347,7 @@ void BusDigital::show() {
     _totalBusBri = (_totalBusBri * _bri) / 255;      // total applied brightness for use in restoreColorLossy (see applyBriLimit())
   else
     _totalBusBri = _bri; // if not using ABL, total bus brightness is just the bus brightness
-  _busPtr->show();
+  if (_busPtr->show()) _showOk++; else _showFail++;
 }
 
 bool BusDigital::canShow() const {
@@ -474,6 +474,22 @@ std::vector<LEDType> BusDigital::getLEDTypes() {
 
 bool BusDigital::isParHw() {
   return _driverType == BUSDRV_PARHW; // I2S/LCD/ParallelSPI/PARLIO are all parallel async drivers
+}
+
+// time one frame takes on the wire: all bytes of the encode buffer, then the reset gap (one-wire buses only)
+uint32_t BusDigital::getFrameTimeUs() const {
+  if (!_valid || !_busPtr || is2Pin()) return 0;
+  WLEDpixelBus::LedTiming t = _busProperties.timing;
+  if (_busSpeedFactor != 100) t = WLEDpixelBus::scaleTiming(t, _busSpeedFactor / 100.0f);
+  // RMT and bit-bang send each bit with its own high and low times, the DMA drivers (I2S, LCD, SPI, PARLIO, ESP8266) as 4 steps of t0h;
+  // driver choice as in PixelBusAllocator::create()
+  #ifdef ESP8266
+  const bool ownTimes = _pins[0] == 0 || _pins[0] > 3; // GPIO1/2 use UART, GPIO3 DMA, other pins bit-bang
+  #else
+  const bool ownTimes = _driverType != BUSDRV_PARHW;
+  #endif
+  const uint32_t bitNs = ownTimes ? max(t.t0h_ns + t.t0l_ns, t.t1h_ns + t.t1l_ns) : t.bitPeriod();
+  return (uint32_t)((uint64_t)_busPtr->getEncodeBufferSize() * 8 * bitNs / 1000) + t.reset_us;
 }
 
 void BusDigital::begin() {
@@ -1653,6 +1669,12 @@ void BusManager::clearPixels(size_t n) {
 bool BusManager::canAllShow() {
   for (const auto &bus : busses) if (!bus->canShow()) return false;
   return true;
+}
+
+uint32_t BusManager::getMaxFrameTimeUs() {
+  uint32_t us = 0;
+  for (const auto &bus : busses) us = max(us, bus->getFrameTimeUs()); // buses send in parallel
+  return us;
 }
 
 void BusManager::initializeABL() {

@@ -1278,6 +1278,7 @@ void WS2812FX::finalizeInit() {
     bus->setBrightness(scaledBri(bri));
   }
   BusManager::initializeABL(); // init brightness limiter
+  if (_targetFps == FPS_AUTO) setTargetFps(FPS_AUTO); // frame time follows the new outputs
   DEBUG_PRINTF_P(PSTR("Heap after buses: %d\n"), ESP.getFreeHeap());
 
   Segment::maxWidth  = _length;
@@ -1928,8 +1929,12 @@ void WS2812FX::waitForIt() {
 };
 
 void WS2812FX::setTargetFps(unsigned fps) {
-  if (fps <= 250) _targetFps = fps;
-  if (_targetFps > 0) _frametime = 1000 / _targetFps;
+  if (fps <= 250 || fps == FPS_AUTO) _targetFps = fps;
+  if (_targetFps == FPS_AUTO) {
+    // as fast as the slowest output can send, in whole ms like a fixed target, and no faster than the highest fixed target (250 FPS)
+    const unsigned ms = (BusManager::getMaxFrameTimeUs() + 999) / 1000;
+    _frametime = max(ms, 1000U / 250);
+  } else if (_targetFps > 0) _frametime = 1000 / _targetFps;
   else _frametime = MIN_FRAME_DELAY;     // unlimited mode
 }
 
