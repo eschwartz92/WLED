@@ -99,6 +99,7 @@ static const PROGMEM LedTiming s_ledTimings[] = {
  { 300,  900,  900,  300,   80 },  // SM16825 (16-bit)
  { 250,  250,  250,  250,    0 },  // APA102 / LPD8806 / P9813 / LPD6803 -> SPI LEDs, timing is not really used
  { 500,  500,  500,  500, 1000 },  // WS2801
+ { 400,  850,  800,  450,  300 },  // Govee G1151 (NeoPixelBus WS2812x timing, confirmed on a Strip Light 2 Pro)
 // TODO: could move these timing into the UI and always pass timings down to the firmware or better: make a LED type a struct containing all info including the string and send to UI as json
 };
 
@@ -126,6 +127,7 @@ static inline uint8_t getTimingIndex(uint8_t wledType) {
     case TYPE_P9813:
     case TYPE_LPD6803:       return 11;
     case TYPE_WS2801:        return 12;
+    case TYPE_G1151:         return 13;
     default:                 return  0; // WS2812 fallback
   }
 }

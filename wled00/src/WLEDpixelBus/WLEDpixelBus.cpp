@@ -298,6 +298,13 @@ uint32_t ColorEncoder::decodeGeneric(const uint8_t* in) const {
 PixelBus* createBus(BusDriver driver, int8_t pin, const BusProperties& properties, uint8_t ledType, size_t numPixels) {
 
   PixelBus* bus = nullptr;
+  // bit-packed pixels (gap bits) are only supported by drivers that send _encodeBufferSize bytes as-is
+  // (BitBang and the ESP8266 drivers clock out numPixels * pixelBytes bytes themselves)
+#if defined(ESP8266)
+  if (properties.gapTotal()) return nullptr;
+#elif (WLED_MAX_BB_CHANNELS > 0)
+  if (properties.gapTotal() && driver == BusDriver::BitBang) return nullptr;
+#endif
   const LedTiming& timing = properties.timing;
   // colorOrder/numChannels are unused by the driver constructors: the encoder is installed below.
   // ledType is retained only so a driver can still identify itself (clocked SPI does not use this factory).
@@ -362,6 +369,7 @@ PixelBus* createBus(BusDriver driver, int8_t pin, const BusProperties& propertie
     bus->setSuffixData(properties.suffixData, properties.suffixLen);
     bus->setInverted(properties.invertOutput);
     bus->setEncoder(ColorEncoder(properties.channelColors, properties.numChannels, properties.invertMask, properties.is16bit));
+    bus->setGapBits(properties.gapBits);
   }
 
   return bus;
