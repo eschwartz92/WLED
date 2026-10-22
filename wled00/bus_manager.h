@@ -135,6 +135,7 @@ class Bus {
     virtual uint16_t getFrequency() const                       { return 0U; }
     virtual uint16_t getLEDCurrent() const                      { return 0; }
     virtual uint16_t getUsedCurrent() const                     { return 0; }
+    virtual void     setPixelColorGamma(unsigned pix, uint32_t c); // setPixelColor() with color gamma applied
     virtual uint32_t getFrameTimeUs() const                     { return 0; } // time to send one frame (data + reset gap), 0 = not known
     virtual uint16_t getMaxCurrent() const                      { return 0; }
     virtual uint8_t  getDriverType() const                      { return BUSDRV_RMT; }  // default to RMT (overridden by BusDigital)
@@ -242,6 +243,9 @@ class BusDigital : public Bus {
     void clearPixels() override;
     void setStatusPixel(uint32_t c) override;
     [[gnu::hot]] void setPixelColor(unsigned pix, uint32_t c) override;
+    #ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+    [[gnu::hot]] void setPixelColorGamma(unsigned pix, uint32_t c) override; // 16-bit types: gamma at 16-bit precision
+    #endif
     void setColorOrder(uint8_t colorOrder) override;
     [[gnu::hot]] uint32_t getPixelColor(unsigned pix) const override;
     uint8_t  getColorOrder() const override  { return _colorOrder; }
@@ -496,6 +500,7 @@ namespace BusManager {
   void off();
 
   [[gnu::hot]] void     setPixelColor(unsigned pix, uint32_t c);
+  [[gnu::hot]] void     setPixelColorGamma(unsigned pix, uint32_t c); // with color gamma applied by each bus
   [[gnu::hot]] uint32_t getPixelColor(unsigned pix);
   void        clearPixels(size_t n); // zero all bus encode buffers for first n physical pixels
   void        show();

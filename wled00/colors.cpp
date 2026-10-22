@@ -651,6 +651,9 @@ uint16_t approximateKelvinFromRGB(uint32_t rgb) {
 // gamma lookup tables used for color correction (filled on 1st use (cfg.cpp & set.cpp))
 uint8_t NeoGammaWLEDMethod::gammaT[256];
 uint8_t NeoGammaWLEDMethod::gammaT_inv[256];
+#ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+uint16_t NeoGammaWLEDMethod::gammaT16[256]; // 512 bytes, used by 16-bit LED types (BusDigital::setPixelColorGamma())
+#endif
 
 // re-calculates & fills gamma tables
 void NeoGammaWLEDMethod::calcGammaTable(float gamma)
@@ -659,10 +662,16 @@ void NeoGammaWLEDMethod::calcGammaTable(float gamma)
   for (size_t i = 1; i < 256; i++) {
     gammaT[i] = (int)(powf((float)i / 255.0f, gamma) * 255.0f + 0.5f);
     gammaT_inv[i] = (int)(powf(((float)i - 0.5f) / 255.0f, gamma_inv) * 255.0f + 0.5f);
+    #ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+    gammaT16[i] = (uint16_t)(powf((float)i / 255.0f, gamma) * 65535.0f + 0.5f);
+    #endif
     //DEBUG_PRINTF_P(PSTR("gammaT[%d] = %d gammaT_inv[%d] = %d\n"), i, gammaT[i], i, gammaT_inv[i]);
   }
   gammaT[0] = 0;
   gammaT_inv[0] = 0;
+  #ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+  gammaT16[0] = 0;
+  #endif
 }
 
 uint8_t NeoGammaWLEDMethod::Correct(uint8_t value)

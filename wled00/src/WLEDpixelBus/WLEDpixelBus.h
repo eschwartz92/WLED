@@ -281,6 +281,18 @@ public:
   // -------------------------------------------------------------------------
 
   void     encodeGeneric(uint32_t c, const CctPixel& cct, uint8_t* out, uint8_t bri) const;
+
+  // 16-bit types: encode from a 16-bit value per color source (v[ChannelSource], v[CH_UNUSED] = 0), scaled by bri
+  inline void encode16(const uint16_t* v, uint8_t* out, uint8_t bri) const {
+    const uint8_t n = getColorChannels();
+    for (uint8_t i = 0; i < n; i++) {
+      uint32_t x = _channelMap[i] <= CH_CW ? v[_channelMap[i]] : 0;
+      if (_invertMask & (1u << i)) x ^= 0xFFFF;
+      x = (x * bri + 127) / 255;
+      out[i*2]   = x >> 8;
+      out[i*2+1] = x & 0xFF;
+    }
+  }
   uint32_t decodeGeneric(const uint8_t* in) const;
 
   // Accessors
@@ -539,6 +551,17 @@ public:
     }
     encodePixel(_pixelData + (size_t)pos * _encoder.getPixelBytes(), c, wwcw);
     return true;
+  }
+
+  // 16-bit types only: set pixel pos from a 16-bit value per color source (see ColorEncoder::encode16())
+  void setPixelColor16(uint16_t pos, const uint16_t* v) {
+    if (_padBits) {
+      uint8_t scratch[PACKED_SCRATCH_BYTES] = {0};
+      _encoder.encode16(v, scratch, _encBri);
+      packPixel(pos, scratch);
+      return;
+    }
+    _encoder.encode16(v, _pixelData + (size_t)pos * _encoder.getPixelBytes(), _encBri);
   }
 
   // encode one pixel into out (byte aligned, getPixelBytes() bytes)
