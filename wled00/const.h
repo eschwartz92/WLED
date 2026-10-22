@@ -375,7 +375,7 @@ static_assert(WLED_MAX_BUSSES <= 32, "WLED_MAX_BUSSES exceeds hard limit");
 #define TYPE_TM1914              33            //RGB
 #define TYPE_SM16825             34            //RGB + WW + CW
 #define TYPE_TM1815              35            //RGBW (half speed TM1814)
-#define TYPE_G1151               36            //Govee G1151 (Strip Light 2 Pro): 90 bit per IC, 16 bit GRB + CW + WW, 10 trailing bits (finer WW, sent as 0)
+#define TYPE_G1151               36            //Govee G1151 (Strip Light 2 Pro): 90 bit per IC, 16 bit G R B CW, 10 bit field (sent as 0), 16 bit WW
 //TODO add support for SM16714, see https://wled.discourse.group/t/sm16714-pixel-ic/9794
 #define TYPE_DIGITAL_MAX         39            // last usable digital type
 //"Analog" types (40-47)
