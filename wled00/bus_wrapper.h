@@ -38,38 +38,17 @@ struct LegacyLayout {
   LegacyField f[6];     // color order (WLEDpixelBus has up to 6 colors, TYPE_FW1906 uses all 6 in hardware)
 };
 
-// LED Type wire layout as instantiated by the legacy NPB wrapper (except diverging ESP8266 corner casses that were probably bugs).
-inline const LegacyLayout& getLegacyChannelLayout(uint8_t busType) {
-  static const LegacyLayout grb     = {3, {LF_G, LF_R, LF_B,  LF_PAD, LF_PAD, LF_PAD}}; // WS2812/13, WS2811_400KHZ, LPD8806, LPD6803, TM1914, APA106
-  static const LegacyLayout grbw    = {4, {LF_G, LF_R, LF_B,  LF_W,   LF_PAD, LF_PAD}}; // SK6812_RGBW
-  static const LegacyLayout grbwwcw = {5, {LF_G, LF_R, LF_B,  LF_W,   LF_CW,  LF_PAD}}; // WS2805 (NeoGrbwwFeature)
-  static const LegacyLayout brg     = {3, {LF_B, LF_R, LF_G,  LF_PAD, LF_PAD, LF_PAD}}; // TM1829 (NeoBrgFeature)
-  static const LegacyLayout rgb     = {3, {LF_R, LF_G, LF_B,  LF_PAD, LF_PAD, LF_PAD}}; // UCS8903 (16-bit)
-  static const LegacyLayout rgbw    = {4, {LF_R, LF_G, LF_B,  LF_W,   LF_PAD, LF_PAD}}; // UCS8904 (16-bit)
-  static const LegacyLayout wrgb    = {4, {LF_W, LF_R, LF_G,  LF_B,   LF_PAD, LF_PAD}}; // TM1814/TM1815 (NeoWrgbTm1814Feature)
-  static const LegacyLayout grbcwx  = {6, {LF_G, LF_R, LF_B,  LF_CW,  LF_W,   LF_PAD}}; // FW1906 (NeoGrbcwxFeature, 6th byte unused)
-  static const LegacyLayout rgbcww  = {5, {LF_R, LF_G, LF_B,  LF_CW,  LF_W,   LF_PAD}}; // SM16825 (NeoRgbcwSm16825eFeature, 16-bit)
-  static const LegacyLayout grbcww  = {5, {LF_G, LF_R, LF_B,  LF_CW,  LF_W,   LF_PAD}}; // Govee G1151 (16-bit + 10 tail bits, bit-packed)
-  static const LegacyLayout rbg     = {3, {LF_R, LF_B, LF_G,  LF_PAD, LF_PAD, LF_PAD}}; // WS2801 (NeoRbgFeature)
-  static const LegacyLayout bgr     = {3, {LF_B, LF_G, LF_R,  LF_PAD, LF_PAD, LF_PAD}}; // APA102 (DotStarBgrFeature), P9813 (P9813BgrFeature)
-  switch (busType) {
-    case TYPE_TM1829:                 return brg;
-    case TYPE_UCS8903:                return rgb;
-    case TYPE_UCS8904:                return rgbw;
-    case TYPE_TM1814: // fallthrough
-    case TYPE_TM1815:                 return wrgb;
-    case TYPE_FW1906:                 return grbcwx;
-    case TYPE_WS2805:                 return grbwwcw;
-    case TYPE_SM16825:                return rgbcww;
-    case TYPE_G1151:                  return grbcww;
-    case TYPE_WS2801:                 return rbg;
-    case TYPE_APA102: // fallthrough
-    case TYPE_P9813:                  return bgr;
-    default: // all other one-wire chips used GRB-based NPB features
-      if (busTypeHasCCT(busType))   return grbwwcw;
-      if (busTypeHasWhite(busType)) return grbw;
-      return grb;
+// LED Type wire layout as instantiated by the legacy NPB wrapper (except diverging ESP8266 corner casses that were probably bugs),
+// from LED_TYPE_TABLE; types not in the table used GRB-based NPB features
+inline LegacyLayout getLegacyChannelLayout(uint8_t busType) {
+  const LedTypeDef* t = ledType(busType);
+  const char* l = t ? t->layout : busTypeHasCCT(busType) ? "GRBWC" : busTypeHasWhite(busType) ? "GRBW" : "GRB";
+  LegacyLayout out = {0, {LF_PAD, LF_PAD, LF_PAD, LF_PAD, LF_PAD, LF_PAD}};
+  for (; out.n < 6 && l[out.n]; out.n++) {
+    const char ch = l[out.n];
+    out.f[out.n] = ch == 'R' ? LF_R : ch == 'G' ? LF_G : ch == 'B' ? LF_B : ch == 'W' ? LF_W : ch == 'C' ? LF_CW : LF_PAD;
   }
+  return out;
 }
 
 // Compose a legacy wire layout with color-orderinto a WLEDpixelBus channel map (which puts colors on the wire in the order of channelColors[], see color encoders)
@@ -83,7 +62,7 @@ inline uint8_t legacyColorOrderToChannelMap(uint8_t busType, uint8_t colorOrder,
     {LF_G, LF_B, LF_R}, // 4 = "BGR"
     {LF_B, LF_G, LF_R}, // 5 = "GBR"
   };
-  const LegacyLayout& layout = getLegacyChannelLayout(busType);
+  const LegacyLayout layout = getLegacyChannelLayout(busType);
 
   // Logical content carried by each field after the permutation + white swap.
   uint8_t content[LF_PAD + 1];
@@ -202,7 +181,7 @@ inline void resolveChannelLayout(BusChannelLayout& ch, uint8_t busType, uint8_t 
   ch.is16bit = busTypeIs16bit(busType);
   memcpy(ch.gapBits, busTypeGapBits(busType), sizeof(ch.gapBits));
   ch.invertOutput = busType == TYPE_TM1814 || busType == TYPE_TM1815 || busType == TYPE_TM1914;
-  const WLEDpixelBus::LedTiming timing = WLEDpixelBus::getProtocol(busType);
+  const WLEDpixelBus::LedTiming timing = ledTypeTiming(busType);
   ch.t0h = timing.t0h_ns; ch.t0l = timing.t0l_ns;
   ch.t1h = timing.t1h_ns; ch.t1l = timing.t1l_ns;
   ch.trst = timing.reset_us;
@@ -406,7 +385,7 @@ static WLEDpixelBus::PixelBus* create(uint8_t busType, uint8_t* pins, uint16_t l
     if (!properties) return nullptr; // one-wire buses are created from an explicit property set
     WLEDpixelBus::BusProperties wire = *properties;
     // Caller should already have used checkParallelType(). If it did not, keep the shared clock consistent.
-    if (busType != requestedType) wire.timing = WLEDpixelBus::getProtocol(busType);
+    if (busType != requestedType) wire.timing = ledTypeTiming(busType);
     if (busSpeedFactor != 100) {
       float factor = (float)busSpeedFactor / 100.0f;
       wire.timing = WLEDpixelBus::scaleTiming(wire.timing, factor);

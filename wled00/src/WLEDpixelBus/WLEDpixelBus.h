@@ -106,7 +106,6 @@ static constexpr uint8_t MAX_CUSTOM_CHANNELS = 6; // note: changing this wont pr
 static constexpr uint8_t TM1814_PREFIX_LEN  = 8; // C1+C2 current-config prefix
 static constexpr uint8_t TM1914_PREFIX_LEN  = 6; // mode-setting prefix
 static constexpr uint8_t SM16825_SUFFIX_LEN = 4; // per-frame configuration suffix
-static constexpr uint8_t G1151_GAP_BITS[MAX_CUSTOM_CHANNELS] = {4, 4, 0, 2, 0, 0}; // Govee G1151: zero bits after G, R, B, CW, WW (90 bits per IC)
 
 // Logical channel count thresholds used by the ColorEncoder(uint8_t co, ...) constructor
 // to decide which per-channel wiring rules apply.

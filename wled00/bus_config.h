@@ -4,24 +4,22 @@
 
 #include "const.h"
 #include "src/WLEDpixelBus/WLEDpixelBus.h" // MAX_CUSTOM_CHANNELS, CH_*, LedTiming
+#include "led_types.h"                     // digital LED type table
 
 // Bus configuration structures and helpers (formerly part of bus_manager)
 //==========================================================================
 
+// digital types: LED_TYPE_TABLE (led_types.h); other types below
 constexpr bool busTypeHasRGB(uint8_t type) {
-  return !((type >= TYPE_WS2812_1CH_X3 && type <= TYPE_WS2812_WWA) || type == TYPE_ANALOG_1CH || type == TYPE_ANALOG_2CH || type == TYPE_ONOFF);
+  return ledType(type) ? !(ledType(type)->flags & LT_NORGB) : !(type == TYPE_ANALOG_1CH || type == TYPE_ANALOG_2CH || type == TYPE_ONOFF);
 }
 constexpr bool busTypeHasWhite(uint8_t type) {
-  return  (type >= TYPE_WS2812_1CH_X3 && type <= TYPE_WS2812_WWA) ||
-          type == TYPE_SK6812_RGBW || type == TYPE_TM1814 || type == TYPE_TM1815 || type == TYPE_UCS8904 ||
-          type == TYPE_FW1906 || type == TYPE_WS2805 || type == TYPE_SM16825 || type == TYPE_G1151 || // digital types with white channel
-          (type > TYPE_ONOFF && type <= TYPE_ANALOG_5CH && type != TYPE_ANALOG_3CH) || // analog types with white channel
-          type == TYPE_NET_DDP_RGBW || type == TYPE_NET_ARTNET_RGBW;                   // network types with white channel
+  return ledType(type) ? (ledType(type)->flags & LT_W) != 0 :
+         (type > TYPE_ONOFF && type <= TYPE_ANALOG_5CH && type != TYPE_ANALOG_3CH) || // analog types with white channel
+         type == TYPE_NET_DDP_RGBW || type == TYPE_NET_ARTNET_RGBW;                   // network types with white channel
 }
 constexpr bool busTypeHasCCT(uint8_t type) {
-  return  type == TYPE_WS2812_WWA    || type == TYPE_SM16825 ||
-          type == TYPE_ANALOG_2CH    || type == TYPE_ANALOG_5CH ||
-          type == TYPE_FW1906        || type == TYPE_WS2805 || type == TYPE_G1151;
+  return ledType(type) ? (ledType(type)->flags & LT_CCT) != 0 : (type == TYPE_ANALOG_2CH || type == TYPE_ANALOG_5CH);
 }
 constexpr bool busTypeIsValid(uint8_t type)     { return (type >= TYPE_DIGITAL_MIN && type < 128); }
 constexpr bool busTypeIs2Pin(uint8_t type)      { return (type >= TYPE_2PIN_MIN && type <= TYPE_2PIN_MAX); }
@@ -30,12 +28,12 @@ constexpr bool busTypeIsOnOff(uint8_t type)     { return (type == TYPE_ONOFF); }
 constexpr bool busTypeIsPWM(uint8_t type)       { return (type >= TYPE_ANALOG_MIN && type <= TYPE_ANALOG_MAX); }
 constexpr bool busTypeIsVirtual(uint8_t type)   { return (type >= TYPE_VIRTUAL_MIN && type <= TYPE_VIRTUAL_MAX); }
 constexpr bool busTypeIsHub75(uint8_t type)     { return (type >= TYPE_HUB75MATRIX_MIN && type <= TYPE_HUB75MATRIX_MAX); }
-constexpr bool busTypeIs16bit(uint8_t type)     { return type == TYPE_UCS8903 || type == TYPE_UCS8904 || type == TYPE_SM16825 || type == TYPE_G1151; }
+constexpr bool busTypeIs16bit(uint8_t type)     { return ledType(type) && (ledType(type)->flags & LT_16BIT); }
 inline const uint8_t* busTypeGapBits(uint8_t type) { // zero bits after each wire channel (bit-packed types)
   static constexpr uint8_t none[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {};
-  return type == TYPE_G1151 ? WLEDpixelBus::G1151_GAP_BITS : none;
+  return ledType(type) ? ledType(type)->gaps : none;
 }
-constexpr bool busTypeMustRefresh(uint8_t type) { return type == TYPE_TM1814 || type == TYPE_TM1815; }
+constexpr bool busTypeMustRefresh(uint8_t type) { return ledType(type) && (ledType(type)->flags & LT_REFRESH); }
 constexpr int  busTypeNumPWMPins(uint8_t type)  { return (type - 40); }
 // credit @PaoloTK; for HUB75 the 5 slots store config params (panelW, panelH, chain, rows, cols), not GPIO pins
 constexpr size_t busTypeGetNumberOfPins(uint8_t type) {
