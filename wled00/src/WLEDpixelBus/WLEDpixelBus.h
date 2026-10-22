@@ -284,7 +284,7 @@ protected:
   static constexpr uint8_t PACKED_SCRATCH_BYTES = 0x0F + 1; // max pixel bytes (lower nibble of pixel format) + 1 byte writeBits() may read ahead
 
   // copy nBits from src (MSB first, starting at bit 0) into dst starting at bit dstBit, other dst bits are kept
-  static void writeBits(uint8_t* dst, size_t dstBit, const uint8_t* src, uint16_t nBits) {
+  static constexpr void writeBits(uint8_t* dst, size_t dstBit, const uint8_t* src, uint16_t nBits) {
     for (uint16_t i = 0; i < nBits; ) {
       const size_t   d     = dstBit + i;
       const uint8_t  shift = d & 7;
@@ -301,7 +301,7 @@ protected:
   }
   // copy nBits from src starting at bit srcBit into dst (MSB first, starting at bit 0), one byte per step;
   // only source bytes that hold requested bits are read
-  static void readBits(uint8_t* dst, const uint8_t* src, size_t srcBit, uint16_t nBits) {
+  static constexpr void readBits(uint8_t* dst, const uint8_t* src, size_t srcBit, uint16_t nBits) {
     const uint8_t  shift = srcBit & 7;
     const uint8_t  room  = 8 - shift;            // bits used from the first source byte
     const uint8_t* in    = src + (srcBit >> 3);
@@ -313,27 +313,33 @@ protected:
       dst[i >> 3] = b;
     }
   }
-  inline uint16_t packedPixelBits() const { return (uint16_t)_encoder.getPixelBytes() * 8 + _padBits; }
-  // copy a byte aligned encoded pixel into the bit-packed buffer at pixel pos, skipping the gap bits before each channel
-  // (gaps stay 0: the buffer is zeroed when allocated and cleared, and nothing else writes them)
-  void packPixel(size_t pos, const uint8_t* scratch) {
-    const uint8_t chBytes = _encoder.is16bit() ? 2 : 1, nch = _encoder.getPixelBytes() / chBytes;
-    size_t bit = pos * packedPixelBits();
+  // copy nch byte aligned channels of chBytes each from src into dst starting at bit, skipping gaps[c] bits before
+  // channel c (gap bits are not written: they stay 0 as the buffer is zeroed when allocated and cleared)
+  static constexpr void packChannels(uint8_t* dst, size_t bit, const uint8_t* src, uint8_t chBytes, uint8_t nch, const uint8_t* gaps) {
     for (uint8_t c = 0; c < nch; c++) {
-      bit += _gapBits[c];
-      writeBits(_pixelData, bit, scratch + c * chBytes, chBytes * 8);
+      bit += gaps[c];
+      writeBits(dst, bit, src + c * chBytes, chBytes * 8);
       bit += chBytes * 8;
     }
   }
-  // inverse of packPixel(): copy pixel pos out of the bit-packed buffer into a byte aligned scratch buffer
-  void unpackPixel(size_t pos, uint8_t* scratch) const {
-    const uint8_t chBytes = _encoder.is16bit() ? 2 : 1, nch = _encoder.getPixelBytes() / chBytes;
-    size_t bit = pos * packedPixelBits();
+  // inverse of packChannels()
+  static constexpr void unpackChannels(uint8_t* dst, const uint8_t* src, size_t bit, uint8_t chBytes, uint8_t nch, const uint8_t* gaps) {
     for (uint8_t c = 0; c < nch; c++) {
-      bit += _gapBits[c];
-      readBits(scratch + c * chBytes, _pixelData, bit, chBytes * 8);
+      bit += gaps[c];
+      readBits(dst + c * chBytes, src, bit, chBytes * 8);
       bit += chBytes * 8;
     }
+  }
+  inline uint16_t packedPixelBits() const { return (uint16_t)_encoder.getPixelBytes() * 8 + _padBits; }
+  // copy a byte aligned encoded pixel into the bit-packed buffer at pixel pos (checked in WLEDpixelBus_PackTest.cpp)
+  void packPixel(size_t pos, const uint8_t* scratch) {
+    const uint8_t chBytes = _encoder.is16bit() ? 2 : 1;
+    packChannels(_pixelData, pos * packedPixelBits(), scratch, chBytes, _encoder.getPixelBytes() / chBytes, _gapBits);
+  }
+  // inverse of packPixel(): copy pixel pos out of the bit-packed buffer into a byte aligned scratch buffer
+  void unpackPixel(size_t pos, uint8_t* scratch) const {
+    const uint8_t chBytes = _encoder.is16bit() ? 2 : 1;
+    unpackChannels(scratch, _pixelData, pos * packedPixelBits(), chBytes, _encoder.getPixelBytes() / chBytes, _gapBits);
   }
   // AI: end
 
