@@ -476,29 +476,10 @@ void BusDigital::setColorOrder(uint8_t colorOrder) {
 
 // credit @willmmiles & @netmindz https://github.com/wled/WLED/pull/4056
 std::vector<LEDType> BusDigital::getLEDTypes() {
-  return {
-    {TYPE_WS2812_RGB,    "D",  PSTR("WS281x RGB")},
-    {TYPE_WS2811_400KHZ, "D",  PSTR("400kHz RGB")},
-    {TYPE_TM1829,        "D",  PSTR("TM1829 RGB")},
-    {TYPE_UCS8903,       "D",  PSTR("UCS8903 RGB")},
-    {TYPE_APA106,        "D",  PSTR("APA106/PL9823 RGB")},
-    {TYPE_TM1914,        "D",  PSTR("TM1914 RGB")},
-    {TYPE_SK6812_RGBW,   "D",  PSTR("SK6812/WS2814 RGBW")},
-    {TYPE_UCS8904,       "D",  PSTR("UCS8904 RGBW")},
-    {TYPE_TM1814,        "D",  PSTR("TM1814 RGBW")},
-    {TYPE_TM1815,        "D",  PSTR("TM1815 RGBW")},
-    {TYPE_FW1906,        "D",  PSTR("FW1906/WS2811 RGBCCT")},
-    {TYPE_WS2805,        "D",  PSTR("WS2805 RGBCCT")},
-    {TYPE_SM16825,       "D",  PSTR("SM16825 RGBCCT")},
-    {TYPE_G1151,         "D",  PSTR("Govee G1151 RGBCCT")},
-    {TYPE_WS2812_1CH_X3, "D",  PSTR("WS2811 White")},
-    {TYPE_WS2812_WWA,    "D",  PSTR("WS281x WWA")}, // amber = WW
-    {TYPE_WS2801,        "2P", PSTR("WS2801 RGB")},
-    {TYPE_APA102,        "2P", PSTR("APA102 RGB")},
-    {TYPE_LPD8806,       "2P", PSTR("LPD8806 RGB")},
-    {TYPE_LPD6803,       "2P", PSTR("LPD6803 RGB")},
-    {TYPE_P9813,         "2P", PSTR("P9813 RGB")},
-  };
+  std::vector<LEDType> types;
+  types.reserve(sizeof(LED_TYPE_TABLE) / sizeof(LED_TYPE_TABLE[0]));
+  for (const LedTypeDef& t : LED_TYPE_TABLE) types.push_back({t.id, is2Pin(t.id) ? "2P" : "D", t.name});
+  return types;
 }
 
 bool BusDigital::isParHw() {
