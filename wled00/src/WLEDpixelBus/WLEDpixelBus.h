@@ -94,10 +94,9 @@ static_assert(DEFAULT_DMA_BUFFER_SIZE <= 4092, "DEFAULT_DMA_BUFFER_SIZE exceeds 
 
 // Upper-nibble flags packed into ColorEncoder::_pixelFormat.
 // Lower nibble = logical channel count.  Upper nibble = combination of these flags.
-static constexpr uint8_t NCHF_16BIT  = 0x10; // 16-bit chip (UCS8903/8904/SM16825): wire bytes = logCh * 2
-static constexpr uint8_t NCHF_INVERT = 0x20; // one or more channels polarity-inverted (_invertMask applies)
-static constexpr uint8_t NCHF_CUSTOM = 0x40; // custom channel map: _channelMap[] drives encoding
-// 0x80 reserved
+static constexpr uint8_t NCHF_16BIT  = 0x10; // 16-bit chip (UCS8903/8904, SM16825, G1151): wire bytes = logCh * 2
+static constexpr uint8_t NCHF_CUSTOM = 0x40; // custom channel map (duplicate sources or inverted channels): _channelMap[] drives encoding
+// 0x20, 0x80 reserved
 
 // Maximum number of wire-byte entries in a custom channel map (ColorEncoder::_channelMap[]).
 static constexpr uint8_t MAX_CUSTOM_CHANNELS = 6; // note: changing this wont propaget to the UI, currently ICs with more than 6 channels are not supported
@@ -106,24 +105,6 @@ static constexpr uint8_t MAX_CUSTOM_CHANNELS = 6; // note: changing this wont pr
 static constexpr uint8_t TM1814_PREFIX_LEN  = 8; // C1+C2 current-config prefix
 static constexpr uint8_t TM1914_PREFIX_LEN  = 6; // mode-setting prefix
 static constexpr uint8_t SM16825_SUFFIX_LEN = 4; // per-frame configuration suffix
-
-// Logical channel count thresholds used by the ColorEncoder(uint8_t co, ...) constructor
-// to decide which per-channel wiring rules apply.
-static constexpr uint8_t CHANNELS_RGBW = 4; // RGBW: W-swap applies, TM1814/TM1815 W-first quirk applies
-static constexpr uint8_t CHANNELS_CCT  = 5; // RGB + WW + CW: WW/CW-swap applies
-
-/**
- * RGB wire-position permutation, decoded from the lower nibble of WLED's color-order byte (config value)
- * Mirrors COL_ORDER_* in wled00/const.h (kept independent here to avoid dependency).
- */
-enum ColorOrder : uint8_t {
-  ORDER_GRB = 0, // default
-  ORDER_RGB = 1, // common for WS2811
-  ORDER_BRG = 2,
-  ORDER_RBG = 3,
-  ORDER_BGR = 4,
-  ORDER_GBR = 5,
-};
 
 /**
  * White-channel swap selector, decoded from the upper nibble of WLED's color-order byte.
@@ -174,36 +155,21 @@ enum ChannelSource : uint8_t {
 };
 
 /**
- * Wire-byte counts per pixel for each pixel format (logical channels for 8-bit types;
- * logical channels * 2 for 16-bit types). Used to dispatch encodeGeneric()/decodeGeneric().
- */
-enum WireBytes : uint8_t {
-  WB_RGB    = 3,
-  WB_RGBW   = 4,
-  WB_CCT    = 5,
-  WB_RGB16  = 6,
-  WB_RGBW16 = 8,
-  WB_CCT16  = 10,
-};
-
-/**
  * Pixel encoder: maps RGBW uint32_t to a per-LED byte stream according to color order.
  *
  * _pixelFormat packs two things:
  *   bits[3:0]  wire bytes per pixel (= logical channels for 8-bit; logical channels * 2 for 16-bit)
- *   bits[7:4]  NCHF_* flags (16BIT | INVERT | CUSTOM)
+ *   bits[7:4]  NCHF_* flags (16BIT | CUSTOM)
  *
- * setPixel / getPixelColor switch on _pixelFormat directly → single branch-free dispatch.
- *   0x03/04/05          fast 8-bit RGB / RGBW / CCT paths (no inversion)
- *   3|NCHF_16BIT etc.   fast 16-bit paths (no inversion)
- *   all other values    encodeGeneric / decodeGeneric (inverted, custom, special chips)
+ * Encoding: all 16-bit types use encode16(); 8-bit types 0x03/04/05 use the fast RGB / RGBW / CCT paths,
+ * custom maps (duplicate sources, inverted channels) encodeGeneric(). Decoding: fast paths for 0x03/04/05 and
+ * their 16-bit variants, decodeGeneric() for custom maps.
  *
  * getPixelBytes() returns wire bytes: logCh * 2 for 16-bit types, logCh otherwise.
  */
 class ColorEncoder {
 public:
   ColorEncoder() : _pixelFormat(0x03), _invertMask(0), _idxR(0), _idxG(1), _idxB(2), _idxW(3), _idxCW(4) { memset(_channelMap, 0, sizeof(_channelMap)); }
-  ColorEncoder(uint8_t co, uint8_t numChannels, uint8_t ledType = 0);
   // Custom channel map constructor for custom color orders
   // channelMap[i]: ChannelSource value (CH_UNUSED/CH_R/CH_G/CH_B/CH_W/CH_WW/CH_CW)
   ColorEncoder(const uint8_t channelMap[MAX_CUSTOM_CHANNELS], uint8_t numChannels, uint8_t invertMask, bool is16bit);
@@ -221,29 +187,6 @@ public:
   inline void encodeCCT(uint32_t c, const CctPixel& cct, uint8_t* out) const {
     out[_idxR] = R(c); out[_idxG] = G(c); out[_idxB] = B(c);
     out[_idxW] = cct.ww; out[_idxCW] = cct.cw;
-  }
-
-  // -------------------------------------------------------------------------
-  // Fast encode — 16-bit types (UCS8903 / UCS8904 / SM16825)
-  // -------------------------------------------------------------------------
-
-  inline void encodeRGB16(uint32_t c, uint8_t* out, uint8_t bri) const {
-    writeU16(out, _idxR, R(c), bri);
-    writeU16(out, _idxG, G(c), bri);
-    writeU16(out, _idxB, B(c), bri);
-  }
-  inline void encodeRGBW16(uint32_t c, uint8_t* out, uint8_t bri) const {
-    writeU16(out, _idxR, R(c), bri);
-    writeU16(out, _idxG, G(c), bri);
-    writeU16(out, _idxB, B(c), bri);
-    writeU16(out, _idxW, W(c), bri);
-  }
-  inline void encodeCCT16(uint32_t c, const CctPixel& cct, uint8_t* out, uint8_t bri) const {
-    writeU16(out, _idxR,  R(c), bri);
-    writeU16(out, _idxG,  G(c), bri);
-    writeU16(out, _idxB,  B(c), bri);
-    writeU16(out, _idxW,  cct.ww,  bri);
-    writeU16(out, _idxCW, cct.cw,  bri);
   }
 
   // -------------------------------------------------------------------------
@@ -275,13 +218,13 @@ public:
   }
 
   // -------------------------------------------------------------------------
-  // Generic slow encode/decode — handles NCHF_INVERT, NCHF_SPEC1, NCHF_SPEC2
-  // (and any 16-bit + invert combination); defined in WLEDpixelBus.cpp
+  // Generic slow encode/decode for custom channel maps (duplicate sources, inverted channels); defined in WLEDpixelBus.cpp.
+  // encodeGeneric() is 8-bit only: all 16-bit types encode with encode16()
   // -------------------------------------------------------------------------
 
-  void     encodeGeneric(uint32_t c, const CctPixel& cct, uint8_t* out, uint8_t bri) const;
+  void     encodeGeneric(uint32_t c, const CctPixel& cct, uint8_t* out) const;
 
-  // 16-bit types: encode from a 16-bit value per color source (v[ChannelSource], v[CH_UNUSED] = 0), scaled by bri
+  // all 16-bit types: encode from a 16-bit value per color source (v[ChannelSource], v[CH_UNUSED] = 0), scaled by bri
   inline void encode16(const uint16_t* v, uint8_t* out, uint8_t bri) const {
     const uint8_t n = getColorChannels();
     for (uint8_t i = 0; i < n; i++) {
@@ -298,22 +241,17 @@ public:
   uint8_t getPixelFormat()     const { return _pixelFormat; }   // lower nibble=wire bytes, upper=NCHF_* flags
   uint8_t getColorChannels()   const { return (_pixelFormat & NCHF_16BIT) ? (_pixelFormat & 0x0F) / 2 : (_pixelFormat & 0x0F); } // logical color channels
   uint8_t getPixelBytes()      const { return _pixelFormat & 0x0F; } // wire bytes per pixel
-  bool    is16bit()            const { return (_pixelFormat & NCHF_16BIT) != 0; } // true for UCS8903/8904/SM16825
+  bool    is16bit()            const { return (_pixelFormat & NCHF_16BIT) != 0; } // 16-bit types (UCS8903/8904, SM16825, G1151)
   bool    isCustom()           const { return (_pixelFormat & NCHF_CUSTOM) != 0; } // true for non-permutation custom channel maps
 
 private:
   uint8_t _pixelFormat; // lower nibble = bytes per pixel, upper nibble = NCHF_ flags (invert, 16-bit, custom)
-  uint8_t _invertMask;  // bitmask: bit i = invert color i (applies when NCHF_INVERT or NCHF_CUSTOM set)
+  uint8_t _invertMask;  // bitmask: bit i = invert wire channel i (custom channel maps)
   uint8_t _idxR, _idxG, _idxB;  // wire byte index for R, G, B
   uint8_t _idxW, _idxCW;        // wire byte index for W (or WW) and CW (CCT types)
   uint8_t _channelMap[MAX_CUSTOM_CHANNELS]; // custom channel map: _channelMap[i] = ChannelSource for wire byte i
 
-  // 16bit pixel helper functions
-  static inline void writeU16(uint8_t* out, uint8_t idx, uint8_t val8, uint8_t bri) {
-    const uint16_t v = (uint16_t)val8 * bri;
-    out[idx*2]   = v >> 8;
-    out[idx*2+1] = v & 0xFF;
-  }
+  // 16-bit decode helper: high byte of channel idx
   static inline uint8_t readU16Hi(const uint8_t* in, uint8_t idx) { return in[idx*2]; }
 };
 
@@ -343,7 +281,7 @@ protected:
   // Bit-packed pixels (_padBits > 0): a pixel occupies getPixelBytes()*8 + _padBits bits, MSB first, and is not byte aligned;
   // each wire channel is followed by _gapBits[channel] zero bits. setPixelColor()/getPixelColor() encode to/decode from a
   // byte aligned scratch copy and move its bits in/out of _pixelData (packPixel()/unpackPixel()).
-  static constexpr uint8_t PACKED_SCRATCH_BYTES = 0x0F + 3; // max pixel bytes (lower nibble of pixel format) + up to 16 tail bits + 1 spare
+  static constexpr uint8_t PACKED_SCRATCH_BYTES = 0x0F + 1; // max pixel bytes (lower nibble of pixel format) + 1 byte writeBits() may read ahead
 
   // copy nBits from src (MSB first, starting at bit 0) into dst starting at bit dstBit, other dst bits are kept
   static void writeBits(uint8_t* dst, size_t dstBit, const uint8_t* src, uint16_t nBits) {
@@ -376,16 +314,14 @@ protected:
     }
   }
   inline uint16_t packedPixelBits() const { return (uint16_t)_encoder.getPixelBytes() * 8 + _padBits; }
-  // copy a byte aligned encoded pixel into the bit-packed buffer at pixel pos, each channel followed by its zero gap bits
+  // copy a byte aligned encoded pixel into the bit-packed buffer at pixel pos, skipping each channel's gap bits
+  // (gaps stay 0: the buffer is zeroed when allocated and cleared, and nothing else writes them)
   void packPixel(size_t pos, const uint8_t* scratch) {
-    static const uint8_t zeros[3] = {0, 0, 0}; // a gap (up to 16 bits) + 1 byte writeBits() may read ahead
     const uint8_t chBytes = _encoder.is16bit() ? 2 : 1, nch = _encoder.getPixelBytes() / chBytes;
     size_t bit = pos * packedPixelBits();
     for (uint8_t c = 0; c < nch; c++) {
       writeBits(_pixelData, bit, scratch + c * chBytes, chBytes * 8);
-      bit += chBytes * 8;
-      writeBits(_pixelData, bit, zeros, _gapBits[c]);
-      bit += _gapBits[c];
+      bit += chBytes * 8 + _gapBits[c];
     }
   }
   // inverse of packPixel(): copy pixel pos out of the bit-packed buffer into a byte aligned scratch buffer
@@ -473,13 +409,6 @@ public:
   bool isInverted() const { return _inverted; }
 
   /**
-   * update color order on active encoder
-   */
-  virtual void setColorOrder(uint8_t co) {
-    _encoder = ColorEncoder(co, _encoder.getColorChannels(), _ledType);
-  }
-
-  /**
    * Replace the color encoder (e.g. for curstom bus types after bus creation).
    * Must be called after construction but before begin().
    */
@@ -542,40 +471,38 @@ public:
   // note: using O2 optimization seems to make it slower
   // TODO: on ESP32, do not put this in IRAM on C3 it works in IRAM, need to test if there is any speed benefit from IRAM (note: this may have all changed in IDF V5)
   virtual bool setPixelColor(uint16_t pos, uint32_t c, uint16_t wwcw) {
-    if (_padBits) { // bit-packed: encode byte aligned, then copy the channel bits (with their zero gaps) into place
-      uint8_t scratch[PACKED_SCRATCH_BYTES] = {0};
-      encodePixel(scratch, c, wwcw);
-      packPixel(pos, scratch);
-      return true;
-    }
-    encodePixel(_pixelData + (size_t)pos * _encoder.getPixelBytes(), c, wwcw);
+    storePixel(pos, [&](uint8_t* out) { encodePixel(out, c, wwcw); });
     return true;
   }
 
   // 16-bit types only: set pixel pos from a 16-bit value per color source (see ColorEncoder::encode16())
   void setPixelColor16(uint16_t pos, const uint16_t* v) {
-    if (_padBits) {
-      uint8_t scratch[PACKED_SCRATCH_BYTES] = {0};
-      _encoder.encode16(v, scratch, _encBri);
-      packPixel(pos, scratch);
-      return;
-    }
-    _encoder.encode16(v, _pixelData + (size_t)pos * _encoder.getPixelBytes(), _encBri);
+    storePixel(pos, [&](uint8_t* out) { _encoder.encode16(v, out, _encBri); });
   }
 
   // encode one pixel into out (byte aligned, getPixelBytes() bytes)
   inline void encodePixel(uint8_t* out, uint32_t c, uint16_t wwcw) const {
-    const uint8_t pixelFormat = _encoder.getPixelFormat();
     const CctPixel cct{wwcw};
-    switch (pixelFormat) {
-      case 3:                    _encoder.encodeRGB(c, out);                   break; // 3ch RGB
-      case 4:                    _encoder.encodeRGBW(c, out);                  break; // 4ch RGBW
-      case 5:                    _encoder.encodeCCT(c, cct, out);              break; // 5ch CCT
-      case (3*2) | NCHF_16BIT:   _encoder.encodeRGB16(c, out, _encBri);        break; // 16-bit RGB (6 bytes per pixel)
-      case (4*2) | NCHF_16BIT:   _encoder.encodeRGBW16(c, out, _encBri);       break; // 16-bit RGBW (8bytes per pixel)
-      case (5*2) | NCHF_16BIT:   _encoder.encodeCCT16(c, cct, out, _encBri);   break; // 16-bit CCT (10 bytes per pixel)
-      default:                   _encoder.encodeGeneric(c, cct, out, _encBri); break; // inverted / special cases up to 6 channels per physical pixel
+    if (_encoder.is16bit()) { // 8-bit values scaled to the full 16-bit range, times the encoder brightness
+      const uint16_t v[CH_CW + 1] = {0, uint16_t(R(c) * 257), uint16_t(G(c) * 257), uint16_t(B(c) * 257),
+                                     uint16_t(W(c) * 257), uint16_t(cct.ww * 257), uint16_t(cct.cw * 257)};
+      _encoder.encode16(v, out, _encBri);
+      return;
     }
+    switch (_encoder.getPixelFormat()) {
+      case 3:  _encoder.encodeRGB(c, out);           break; // 3ch RGB
+      case 4:  _encoder.encodeRGBW(c, out);          break; // 4ch RGBW
+      case 5:  _encoder.encodeCCT(c, cct, out);      break; // 5ch CCT
+      default: _encoder.encodeGeneric(c, cct, out);  break; // custom channel maps: duplicate sources, inverted channels
+    }
+  }
+
+  // encode into pixel pos: in place, or for bit-packed buses into a byte aligned scratch copy that packPixel() moves into place
+  template <typename Encode> void storePixel(uint16_t pos, Encode encode) {
+    if (!_padBits) { encode(_pixelData + (size_t)pos * _encoder.getPixelBytes()); return; }
+    uint8_t scratch[PACKED_SCRATCH_BYTES] = {0};
+    encode(scratch);
+    packPixel(pos, scratch);
   }
 
   /**
@@ -584,12 +511,10 @@ public:
    * Override only if the bus uses non-linear encoding (e.g. Esp8266DmaBus 4-step).
    */
   virtual uint32_t getPixelColor(uint16_t pix) const {
-    if (_padBits) { // bit-packed: copy the pixel bits into a byte aligned scratch buffer, then decode
-      uint8_t scratch[PACKED_SCRATCH_BYTES] = {0};
-      unpackPixel(pix, scratch);
-      return decodePixel(scratch);
-    }
-    return decodePixel(_pixelData + (size_t)pix * _encoder.getPixelBytes());
+    if (!_padBits) return decodePixel(_pixelData + (size_t)pix * _encoder.getPixelBytes());
+    uint8_t scratch[PACKED_SCRATCH_BYTES] = {0}; // bit-packed: decode a byte aligned copy
+    unpackPixel(pix, scratch);
+    return decodePixel(scratch);
   }
 
   // decode one byte aligned pixel (getPixelBytes() bytes)

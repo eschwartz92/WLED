@@ -496,16 +496,7 @@ void Esp8266DmaBus::end() {
 IRAM_ATTR bool Esp8266DmaBus::setPixelColor(uint16_t pos, uint32_t c, uint16_t wwcw) {
   const uint8_t pixelBytes = _encoder.getPixelBytes();
   uint8_t src[12];
-  const CctPixel cct{wwcw};
-  switch (_encoder.getPixelFormat()) {
-    case 3:                    _encoder.encodeRGB(c, src);                    break;
-    case 4:                    _encoder.encodeRGBW(c, src);                   break;
-    case 5:                    _encoder.encodeCCT(c, cct, src);               break;
-    case (3*2) | NCHF_16BIT:   _encoder.encodeRGB16(c, src, _encBri);         break;
-    case (4*2) | NCHF_16BIT:   _encoder.encodeRGBW16(c, src, _encBri);        break;
-    case (5*2) | NCHF_16BIT:   _encoder.encodeCCT16(c, cct, src, _encBri);    break;
-    default:                   _encoder.encodeGeneric(c, cct, src, _encBri);  break;
-  }
+  encodePixel(src, c, wwcw);
   uint32_t* dst = (uint32_t*)(_pixelData + (size_t)pos * pixelBytes * 4);
   for (uint8_t b = 0; b < pixelBytes; b++) {
     uint32_t word = 0;

@@ -28,7 +28,7 @@ public:
    * @param useHardwareSpi True = hardware SPI peripheral, false = GPIO bit-bang
    * @param ledType  WLED LED type constant (TYPE_APA102, TYPE_WS2801, …)
    */
-  SpiBus(int8_t dataPin, int8_t clockPin, const uint16_t frequencykHz, uint8_t colorOrder, uint8_t numChannels, bool useHardwareSpi = true, uint8_t ledType = 0);
+  SpiBus(int8_t dataPin, int8_t clockPin, const uint16_t frequencykHz, bool useHardwareSpi = true, uint8_t ledType = 0);
   ~SpiBus() override;
 
   bool begin() override;
