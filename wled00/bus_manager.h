@@ -292,6 +292,7 @@ class BusDigital : public Bus {
     WLEDpixelBus::BusProperties _busProperties; // assembled wire descriptor (from BusConfig), also used by begin() for the prefix upload
     WLEDpixelBus::PixelBus* _busPtr = nullptr;
     BusChannelLayout _channels; // configured channel layout as passed in BusConfig (user-entered when custom)
+    inline bool wire16() const { return _channels.custom ? _channels.is16bit : is16bit(); } // 16-bit wire channels: 16-bit type or 16-bit customized layout (user LED types)
 
     static uint16_t _milliAmpsTotal; // is overwitten/recalculated on each show()
 

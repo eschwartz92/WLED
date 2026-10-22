@@ -289,8 +289,8 @@ void BusDigital::setBrightness(uint8_t b) {
     WLEDpixelBus::mapBrightnessToCurrentStep(b, 31, 8, hwStep, residualBri);
     _busPtr->setApa102HwBri(hwStep + 1); // 0 is off so use 1..31
     _busPtr->setBusBri(residualBri);     // used by color_fade() in setPixelColor()
-  } else if (is16bit()) {
-    // 16-bit LED types (SM16825, UCS8903, UCS8904): color_fade() is a no-op (_busBri=255);
+  } else if (wire16()) {
+    // 16-bit LED types (SM16825, UCS8903, UCS8904, G1151, 16-bit user types): color_fade() is a no-op (_busBri=255);
     // encoder applies full 16-bit precision via channel*_encBri.
     _busPtr->setBusBri(255);
     _busPtr->setEncBri(b);
@@ -412,7 +412,7 @@ void BusDigital::setPixelColor(unsigned pix, uint32_t c) {
 // first, which merges the dark levels. Only used where every later step gives the same result before or after gamma.
 void BusDigital::setPixelColorGamma(unsigned pix, uint32_t c) {
   const unsigned aWM = (_gAWM < AW_GLOBAL_DISABLED) ? _gAWM : _autoWhiteMode;
-  if (!_valid || !is16bit() || Bus::_cct >= 1900 || _hasColorOrderMap || aWM == RGBW_MODE_AUTO_ACCURATE) {
+  if (!_valid || !wire16() || Bus::_cct >= 1900 || _hasColorOrderMap || aWM == RGBW_MODE_AUTO_ACCURATE) {
     setPixelColor(pix, gamma32(c)); // Kelvin color balance, white subtraction and per-range color order: 8-bit path
     return;
   }
