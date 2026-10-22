@@ -438,8 +438,6 @@ void getSettingsJS(byte subPage, Print& settingsScript)
         char cbt1h[7] = "CBt1h"; cbt1h[5] = offset+s; cbt1h[6] = 0;
         char cbt1l[7] = "CBt1l"; cbt1l[5] = offset+s; cbt1l[6] = 0;
         char cbrst[7] = "CBrst"; cbrst[5] = offset+s; cbrst[6] = 0;
-        char cbtl[6]  = "CBtl";  cbtl[4]  = offset+s; cbtl[5]  = 0; // tail bits
-        char cbta[6]  = "CBta";  cbta[4]  = offset+s; cbta[5]  = 0; // channels before the tail bits
         printSetFormCheckbox(settingsScript, cben, true);
         printSetFormValue(settingsScript, cbch, cb.numChannels);
         printSetFormCheckbox(settingsScript, cbio, cb.invertOutput);
@@ -449,12 +447,12 @@ void getSettingsJS(byte subPage, Print& settingsScript)
         printSetFormValue(settingsScript, cbt1h, cb.t1h);
         printSetFormValue(settingsScript, cbt1l, cb.t1l);
         printSetFormValue(settingsScript, cbrst,  cb.trst);
-        printSetFormValue(settingsScript, cbtl,  cb.tailBits);
-        printSetFormValue(settingsScript, cbta,  cb.tailAfter < cb.numChannels ? cb.tailAfter : cb.numChannels);
         for (uint8_t ci = 0; ci < 6; ci++) {
           char cbc[7] = "CBc"; cbc[3] = '0'+ci; cbc[4] = offset+s; cbc[5] = 0; // channel color
           char cbi[7] = "CBi"; cbi[3] = '0'+ci; cbi[4] = offset+s; cbi[5] = 0; // invert bit
+          char cbg[7] = "CBg"; cbg[3] = '0'+ci; cbg[4] = offset+s; cbg[5] = 0; // zero bits after the channel
           printSetFormValue(settingsScript, cbc, cb.channelColors[ci]);
+          printSetFormValue(settingsScript, cbg, cb.gapBits[ci]);
           printSetFormCheckbox(settingsScript, cbi, (cb.invertMask >> ci) & 1);
         }
       }

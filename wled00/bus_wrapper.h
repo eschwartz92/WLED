@@ -200,8 +200,7 @@ inline void resolveChannelLayout(BusChannelLayout& ch, uint8_t busType, uint8_t 
   }
   ch.invertMask = 0;
   ch.is16bit = busTypeIs16bit(busType);
-  ch.tailBits = busTypeTailBits(busType);
-  ch.tailAfter = busTypeTailAfter(busType);
+  memcpy(ch.gapBits, busTypeGapBits(busType), sizeof(ch.gapBits));
   ch.invertOutput = busType == TYPE_TM1814 || busType == TYPE_TM1815 || busType == TYPE_TM1914;
   const WLEDpixelBus::LedTiming timing = WLEDpixelBus::getProtocol(busType);
   ch.t0h = timing.t0h_ns; ch.t0l = timing.t0l_ns;
@@ -236,8 +235,7 @@ inline WLEDpixelBus::BusProperties makeBusProperties(const BusChannelLayout& lay
   props.invertMask = layout.invertMask;
   props.is16bit = layout.is16bit;
   props.invertOutput = layout.invertOutput;
-  props.tailBits = layout.tailBits;
-  props.tailAfter = layout.tailAfter;
+  memcpy(props.gapBits, layout.gapBits, sizeof(props.gapBits));
   props.timing = WLEDpixelBus::LedTiming(layout.t0h, layout.t0l, layout.t1h, layout.t1l, layout.trst);
   applyTypeFraming(props, protocolType);
   return props;

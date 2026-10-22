@@ -282,8 +282,11 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
         }
         bc.channels.invertMask   = elm["cinv"] | 0;
         bc.channels.is16bit      = elm["c16"] | false;
-        bc.channels.tailBits     = (uint8_t)constrain((int)(elm["ctail"] | 0), 0, 16);
-        bc.channels.tailAfter    = elm["ctaila"] | 0xFF;
+        JsonArrayConst cgap = elm["cgap"];
+        if (!cgap.isNull()) {
+          for (uint8_t ci = 0; ci < WLEDpixelBus::MAX_CUSTOM_CHANNELS && ci < cgap.size(); ci++)
+            bc.channels.gapBits[ci] = (uint8_t)constrain((int)cgap[ci], 0, 16);
+        }
         bc.channels.invertOutput = elm["cio"] | false;
         bc.channels.t0h  = elm["ct0h"] | 300;
         bc.channels.t0l  = elm["ct0l"] | 900;
@@ -1062,8 +1065,12 @@ void serializeConfig(JsonObject root) {
       for (uint8_t i = 0; i < cb.numChannels; i++) cmap.add(cb.channelColors[i]); // emit only active channels; deserializer guards with cmap.size()
       ins["cinv"] = cb.invertMask;
       ins["c16"]  = cb.is16bit;
-      if (cb.tailBits) ins["ctail"] = cb.tailBits;
-      if (cb.tailBits && cb.tailAfter != 0xFF) ins["ctaila"] = cb.tailAfter;
+      bool hasGaps = false;
+      for (uint8_t i = 0; i < cb.numChannels; i++) hasGaps |= cb.gapBits[i] > 0;
+      if (hasGaps) {
+        JsonArray cgap = ins.createNestedArray("cgap");
+        for (uint8_t i = 0; i < cb.numChannels; i++) cgap.add(cb.gapBits[i]);
+      }
       ins["cio"]  = cb.invertOutput;
       ins["ct0h"] = cb.t0h;
       ins["ct0l"] = cb.t0l;
