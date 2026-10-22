@@ -313,6 +313,9 @@ void BusDigital::estimateCurrent() {
   if (_type == TYPE_TM1814 || _type == TYPE_TM1815 || _type == TYPE_APA102) {
     const uint8_t busBri = _busPtr->getBusBri();
     if (busBri > 0) colorSum = ((uint64_t)colorSum * _bri) / busBri;
+  } else if (wire16()) {
+    // 16-bit types: colors were accumulated at full brightness, the encoder applies _bri later (setEncBri())
+    colorSum = ((uint64_t)colorSum * _bri) / 255;
   }
   // colorSum has all the values of color channels summed, max would be getLength()*(3*255 + (255 if hasWhite()): convert to milliAmps
   uint32_t clrUnitsPerChannel = hasWhite() ? 4*255 : 3*255;
@@ -395,7 +398,7 @@ void BusDigital::setPixelColor(unsigned pix, uint32_t c) {
       cct.cw = ((uint16_t)(cct.cw + 1) * bri) >> 8;
       cct.ww = ((uint16_t)(cct.ww + 1) * bri) >> 8;
     }
-    if (BusManager::_useABL) addColorSum(R(c), G(c), B(c), W(c)); // 16-bit types: unscaled (bri 255 above), slight over-estimate at low brightness
+    if (BusManager::_useABL) addColorSum(R(c), G(c), B(c), W(c)); // 16-bit types: unscaled (bri 255 above), brightness applied in estimateCurrent()
   }
 
   if (__builtin_expect(_hasColorOrderMap, 0)) {
@@ -431,7 +434,7 @@ void BusDigital::setPixelColorGamma(unsigned pix, uint32_t c) {
       v[WLEDpixelBus::CH_WW] = (uint32_t)v[WLEDpixelBus::CH_W] * fw / 255;
       v[WLEDpixelBus::CH_CW] = (uint32_t)v[WLEDpixelBus::CH_W] * fc / 255;
     }
-    if (BusManager::_useABL) // same estimate as setPixelColor(): the 8-bit gamma corrected channels
+    if (BusManager::_useABL) // same estimate as setPixelColor(): the 8-bit gamma corrected channels, brightness applied in estimateCurrent()
       addColorSum(v[WLEDpixelBus::CH_R] >> 8, v[WLEDpixelBus::CH_G] >> 8, v[WLEDpixelBus::CH_B] >> 8, v[WLEDpixelBus::CH_W] >> 8);
   }
   _busPtr->setPixelColor16(pix, v);
