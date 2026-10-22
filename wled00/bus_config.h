@@ -31,8 +31,10 @@ constexpr bool busTypeIsPWM(uint8_t type)       { return (type >= TYPE_ANALOG_MI
 constexpr bool busTypeIsVirtual(uint8_t type)   { return (type >= TYPE_VIRTUAL_MIN && type <= TYPE_VIRTUAL_MAX); }
 constexpr bool busTypeIsHub75(uint8_t type)     { return (type >= TYPE_HUB75MATRIX_MIN && type <= TYPE_HUB75MATRIX_MAX); }
 constexpr bool busTypeIs16bit(uint8_t type)     { return type == TYPE_UCS8903 || type == TYPE_UCS8904 || type == TYPE_SM16825 || type == TYPE_G1151; }
-constexpr uint8_t busTypeTailBits(uint8_t type) { return type == TYPE_G1151 ? WLEDpixelBus::G1151_TAIL_BITS : 0; } // extra zero bits per pixel (bit-packed types)
-constexpr uint8_t busTypeTailAfter(uint8_t type) { return type == TYPE_G1151 ? WLEDpixelBus::G1151_TAIL_AFTER : 0xFF; } // wire channels before them, 0xFF = at the end
+inline const uint8_t* busTypeGapBits(uint8_t type) { // zero bits after each wire channel (bit-packed types)
+  static constexpr uint8_t none[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {};
+  return type == TYPE_G1151 ? WLEDpixelBus::G1151_GAP_BITS : none;
+}
 constexpr bool busTypeMustRefresh(uint8_t type) { return type == TYPE_TM1814 || type == TYPE_TM1815; }
 constexpr int  busTypeNumPWMPins(uint8_t type)  { return (type - 40); }
 // credit @PaoloTK; for HUB75 the 5 slots store config params (panelW, panelH, chain, rows, cols), not GPIO pins
@@ -59,8 +61,7 @@ struct BusChannelLayout {
   bool     is16bit      = false;  // 2 wire bytes per channel (UCS8903/04, SM16825)
   bool     invertOutput = false;  // invert the hardware output signal polarity
   bool     custom       = false;  // user-entered override active (replaces CustomBusConfig::active())
-  uint8_t  tailBits     = 0;      // extra bits (sent as 0) per pixel, pixels are bit-packed when > 0 (e.g. Govee G1151: 10)
-  uint8_t  tailAfter    = 0xFF;   // wire channels sent before the tail bits, 0xFF = after the last channel (Govee G1151: 4)
+  uint8_t  gapBits[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {}; // zero bits sent after each wire channel, bit-packed when any > 0 (Govee G1151: 4,4,0,2,0)
   uint16_t t0h = 300;  // '0' bit high time, ns
   uint16_t t0l = 900;  // '0' bit low  time, ns
   uint16_t t1h = 700;  // '1' bit high time, ns

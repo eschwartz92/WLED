@@ -313,14 +313,9 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
         char cbt1h[7] = "CBt1h"; cbt1h[5] = offset+s; cbt1h[6] = 0;
         char cbt1l[7] = "CBt1l"; cbt1l[5] = offset+s; cbt1l[6] = 0;
         char cbrst[7] = "CBrst"; cbrst[5] = offset+s; cbrst[6] = 0;
-        char cbtl[6]  = "CBtl";  cbtl[4]  = offset+s; cbtl[5]  = 0;
-        char cbta[6]  = "CBta";  cbta[4]  = offset+s; cbta[5]  = 0;
         bc.channels.numChannels  = (uint8_t)constrain(request->arg(cbch).toInt(), 0, WLEDpixelBus::MAX_CUSTOM_CHANNELS);
         bc.channels.invertOutput = request->hasArg(cbio);
         bc.channels.is16bit      = request->hasArg(cbb);
-        bc.channels.tailBits     = (uint8_t)constrain(request->arg(cbtl).toInt(), 0, 16);
-        const int tailAfter = request->hasArg(cbta) ? request->arg(cbta).toInt() : 0xFF;
-        bc.channels.tailAfter    = (tailAfter >= 0 && tailAfter < bc.channels.numChannels) ? tailAfter : 0xFF; // at or past the last channel = at the end
         bc.channels.t0h  = request->arg(cbt0h).toInt();
         bc.channels.t0l  = request->arg(cbt0l).toInt();
         bc.channels.t1h  = request->arg(cbt1h).toInt();
@@ -330,7 +325,9 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
         for (uint8_t ci = 0; ci < 6; ci++) {
           char cbc[7] = "CBc"; cbc[3] = '0'+ci; cbc[4] = offset+s; cbc[5] = 0;
           char cbi[7] = "CBi"; cbi[3] = '0'+ci; cbi[4] = offset+s; cbi[5] = 0;
+          char cbg[7] = "CBg"; cbg[3] = '0'+ci; cbg[4] = offset+s; cbg[5] = 0;
           bc.channels.channelColors[ci] = (uint8_t)constrain(request->arg(cbc).toInt(), 0, 6);
+          bc.channels.gapBits[ci] = ci < bc.channels.numChannels ? (uint8_t)constrain(request->arg(cbg).toInt(), 0, 16) : 0;
           if (request->hasArg(cbi)) bc.channels.invertMask |= (1u << ci);
         }
       }
