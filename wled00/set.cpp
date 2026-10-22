@@ -325,7 +325,9 @@ void handleSettingsSet(AsyncWebServerRequest *request, byte subPage)
         for (uint8_t ci = 0; ci < 6; ci++) {
           char cbc[7] = "CBc"; cbc[3] = '0'+ci; cbc[4] = offset+s; cbc[5] = 0;
           char cbi[7] = "CBi"; cbi[3] = '0'+ci; cbi[4] = offset+s; cbi[5] = 0;
+          char cbg[7] = "CBg"; cbg[3] = '0'+ci; cbg[4] = offset+s; cbg[5] = 0;
           bc.channels.channelColors[ci] = (uint8_t)constrain(request->arg(cbc).toInt(), 0, 6);
+          bc.channels.gapBits[ci] = ci < bc.channels.numChannels ? (uint8_t)constrain(request->arg(cbg).toInt(), 0, 16) : 0;
           if (request->hasArg(cbi)) bc.channels.invertMask |= (1u << ci);
         }
       }

@@ -1,0 +1,21 @@
+{
+  "v": 1,
+  "types": [
+    {
+      "name": "Govee G1151 RGBCCT (Strip Light 2 Pro)",
+      "base": 22,
+      "channels": ["G", "R", "B", "CW", "WW"],
+      "bits": 16,
+      "gaps": [4, 4, 0, 2, 0],
+      "timing": { "t0h": 400, "t0l": 850, "t1h": 800, "t1l": 450, "reset": 300 },
+      "notes": "90 bits per IC: 16-bit G, R, B, CW, WW with 4, 4, 0, 2, 0 zero bits after each"
+    },
+    {
+      "name": "Example: RGBW with inverted white",
+      "base": 30,
+      "channels": ["G", "R", "B", "W"],
+      "invert": [3],
+      "timing": { "t0h": 300, "t0l": 900, "t1h": 600, "t1l": 600, "reset": 80 }
+    }
+  ]
+}

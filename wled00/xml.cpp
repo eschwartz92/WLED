@@ -450,7 +450,9 @@ void getSettingsJS(byte subPage, Print& settingsScript)
         for (uint8_t ci = 0; ci < 6; ci++) {
           char cbc[7] = "CBc"; cbc[3] = '0'+ci; cbc[4] = offset+s; cbc[5] = 0; // channel color
           char cbi[7] = "CBi"; cbi[3] = '0'+ci; cbi[4] = offset+s; cbi[5] = 0; // invert bit
+          char cbg[7] = "CBg"; cbg[3] = '0'+ci; cbg[4] = offset+s; cbg[5] = 0; // zero bits after the channel
           printSetFormValue(settingsScript, cbc, cb.channelColors[ci]);
+          printSetFormValue(settingsScript, cbg, cb.gapBits[ci]);
           printSetFormCheckbox(settingsScript, cbi, (cb.invertMask >> ci) & 1);
         }
       }
