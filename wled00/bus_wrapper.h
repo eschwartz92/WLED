@@ -223,7 +223,8 @@ inline void applyTypeFraming(WLEDpixelBus::BusProperties& props, uint8_t busType
     props.suffixLen = WLEDpixelBus::SM16825_SUFFIX_LEN;
     memcpy(props.suffixData, SM16825_SUFFIX, sizeof(SM16825_SUFFIX));
   } else if (busType == TYPE_G1151) {
-    props.tailBits = WLEDpixelBus::G1151_TAIL_BITS; // 10 extra bits per IC (lowest bits of a 26-bit WW value), pixels are bit-packed
+    props.tailBits  = WLEDpixelBus::G1151_TAIL_BITS;  // 10 bit field between CW and WW (sent as 0), pixels are bit-packed
+    props.tailAfter = WLEDpixelBus::G1151_TAIL_AFTER;
   }
 }
 
