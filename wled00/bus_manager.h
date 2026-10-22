@@ -229,7 +229,8 @@ class Bus {
 
     uint8_t _busSpeedFactor = 100; // percent, default 100 = default timings
 
-    uint32_t autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const;
+    uint32_t autoWhite(uint32_t c) const;                              // white channel from RGB (auto white mode)
+    uint32_t autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const; // autoWhite() and the WW/CW split
 };
 
 
@@ -283,6 +284,10 @@ class BusDigital : public Bus {
     uint16_t _milliAmpsLimit;
     uint16_t _frequencykHz;
     uint32_t _colorSum = 0;           // sum of brightness-scaled channel bytes; updated in setPixelColor() when ABL active
+    inline void addColorSum(unsigned r, unsigned g, unsigned b, unsigned w) { // for ABL current estimation
+      _colorSum += (_milliAmpsPerLed < 255) ? r + g + b + w                              // normal ABL
+                 : ((r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b));                    // wacky WS2815 power model: max of RGB, no W (issue #549)
+    }
     uint32_t _showOk = 0, _showFail = 0; // frames the driver accepted / refused (diagnostics)
     WLEDpixelBus::BusProperties _busProperties; // assembled wire descriptor (from BusConfig), also used by begin() for the prefix upload
     WLEDpixelBus::PixelBus* _busPtr = nullptr;

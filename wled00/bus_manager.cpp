@@ -100,10 +100,9 @@ void Bus::calculateCCT(uint32_t c, uint8_t &ww, uint8_t &cw) {
 }
 
 // calculates white channel and CCT values based on given settings
-uint32_t Bus::autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const {
+uint32_t Bus::autoWhite(uint32_t c) const {
   unsigned aWM = _autoWhiteMode;
   if (_gAWM < AW_GLOBAL_DISABLED) aWM = _gAWM;
-  CRGBW cIn = c; // save original color for CCT calculation
   unsigned w = W(c);
   if (aWM != RGBW_MODE_MANUAL_ONLY) {
     unsigned r = R(c); // note: using uint8_t generates larger code
@@ -119,8 +118,14 @@ uint32_t Bus::autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const {
     }
     c = RGBW32(r, g, b, w);
   }
+  return c;
+}
+
+uint32_t Bus::autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const {
+  CRGBW cIn = c; // save original color for CCT calculation
+  c = autoWhite(c);
   if (_hasCCT) {
-    cIn.w = w; // need original rgb values in case CCT is derived from RGB
+    cIn.w = W(c); // need original rgb values in case CCT is derived from RGB
     calculateCCT(cIn, ww, cw);
   }
   return c;
@@ -140,10 +145,10 @@ BusDigital::BusDigital(const BusConfig &bc)
 , _skip(bc.skipAmount) //sacrificial pixels
 , _colorOrder(bc.colorOrder)
 , _protocolType(bc.type)
+, _driverType(bc.driverType) // Store driver preference (0=RMT, 1=I2S)
 , _milliAmpsPerLed(bc.milliAmpsPerLed)
 , _milliAmpsMax(bc.milliAmpsMax)
 , _milliAmpsLimit(0)
-, _driverType(bc.driverType) // Store driver preference (0=RMT, 1=I2S)
 , _busPtr(nullptr)
 , _channels(bc.channels) // configured layout as passed (user-entered values when custom)
 {
@@ -390,16 +395,7 @@ void BusDigital::setPixelColor(unsigned pix, uint32_t c) {
       cct.cw = ((uint16_t)(cct.cw + 1) * bri) >> 8;
       cct.ww = ((uint16_t)(cct.ww + 1) * bri) >> 8;
     }
-    if (BusManager::_useABL) {
-      // Accumulate brightness-scaled channel values for current estimation.
-      // For 16-bit types c is unscaled (bri=255 above); ABL slightly over-estimates at low brightness.
-      uint8_t r = R(c), g = G(c), b = B(c);
-      if (_milliAmpsPerLed < 255) { // normal ABL
-        _colorSum += r + g + b + W(c);
-      } else { // wacky WS2815 power model, ignore white channel, use max of RGB (issue #549)
-        _colorSum += ((r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b));
-      }
-    }
+    if (BusManager::_useABL) addColorSum(R(c), G(c), B(c), W(c)); // 16-bit types: unscaled (bri 255 above), slight over-estimate at low brightness
   }
 
   if (__builtin_expect(_hasColorOrderMap, 0)) {
@@ -424,8 +420,7 @@ void BusDigital::setPixelColorGamma(unsigned pix, uint32_t c) {
   pix += _skip;
   uint16_t v[WLEDpixelBus::CH_CW + 1] = {}; // 16-bit value per color source (WLEDpixelBus::ChannelSource)
   if (c > 0) {
-    uint8_t ww, cw;
-    if (hasWhite()) c = autoWhiteCalc(c, ww, cw); // white from the darkest/brightest RGB channel: same before or after gamma
+    if (hasWhite()) c = autoWhite(c); // white from the darkest/brightest RGB channel: same before or after gamma
     v[WLEDpixelBus::CH_R] = gamma16(R(c));
     v[WLEDpixelBus::CH_G] = gamma16(G(c));
     v[WLEDpixelBus::CH_B] = gamma16(B(c));
@@ -436,11 +431,8 @@ void BusDigital::setPixelColorGamma(unsigned pix, uint32_t c) {
       v[WLEDpixelBus::CH_WW] = (uint32_t)v[WLEDpixelBus::CH_W] * fw / 255;
       v[WLEDpixelBus::CH_CW] = (uint32_t)v[WLEDpixelBus::CH_W] * fc / 255;
     }
-    if (BusManager::_useABL) { // same estimate as setPixelColor(): sum of the 8-bit gamma corrected channels
-      const unsigned r = v[WLEDpixelBus::CH_R] >> 8, g = v[WLEDpixelBus::CH_G] >> 8, b = v[WLEDpixelBus::CH_B] >> 8;
-      if (_milliAmpsPerLed < 255) _colorSum += r + g + b + (v[WLEDpixelBus::CH_W] >> 8);
-      else _colorSum += ((r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b)); // WS2815 power model, see setPixelColor()
-    }
+    if (BusManager::_useABL) // same estimate as setPixelColor(): the 8-bit gamma corrected channels
+      addColorSum(v[WLEDpixelBus::CH_R] >> 8, v[WLEDpixelBus::CH_G] >> 8, v[WLEDpixelBus::CH_B] >> 8, v[WLEDpixelBus::CH_W] >> 8);
   }
   _busPtr->setPixelColor16(pix, v);
 }

@@ -11,15 +11,18 @@
 
 // digital types: LED_TYPE_TABLE (led_types.h); other types below
 constexpr bool busTypeHasRGB(uint8_t type) {
-  return ledType(type) ? !(ledType(type)->flags & LT_NORGB) : !(type == TYPE_ANALOG_1CH || type == TYPE_ANALOG_2CH || type == TYPE_ONOFF);
+  const LedTypeDef* t = ledType(type);
+  return t ? !(t->flags & LT_NORGB) : !(type == TYPE_ANALOG_1CH || type == TYPE_ANALOG_2CH || type == TYPE_ONOFF);
 }
 constexpr bool busTypeHasWhite(uint8_t type) {
-  return ledType(type) ? (ledType(type)->flags & LT_W) != 0 :
+  const LedTypeDef* t = ledType(type);
+  return t ? (t->flags & LT_W) != 0 :
          (type > TYPE_ONOFF && type <= TYPE_ANALOG_5CH && type != TYPE_ANALOG_3CH) || // analog types with white channel
          type == TYPE_NET_DDP_RGBW || type == TYPE_NET_ARTNET_RGBW;                   // network types with white channel
 }
 constexpr bool busTypeHasCCT(uint8_t type) {
-  return ledType(type) ? (ledType(type)->flags & LT_CCT) != 0 : (type == TYPE_ANALOG_2CH || type == TYPE_ANALOG_5CH);
+  const LedTypeDef* t = ledType(type);
+  return t ? (t->flags & LT_CCT) != 0 : (type == TYPE_ANALOG_2CH || type == TYPE_ANALOG_5CH);
 }
 constexpr bool busTypeIsValid(uint8_t type)     { return (type >= TYPE_DIGITAL_MIN && type < 128); }
 constexpr bool busTypeIs2Pin(uint8_t type)      { return (type >= TYPE_2PIN_MIN && type <= TYPE_2PIN_MAX); }
@@ -28,12 +31,13 @@ constexpr bool busTypeIsOnOff(uint8_t type)     { return (type == TYPE_ONOFF); }
 constexpr bool busTypeIsPWM(uint8_t type)       { return (type >= TYPE_ANALOG_MIN && type <= TYPE_ANALOG_MAX); }
 constexpr bool busTypeIsVirtual(uint8_t type)   { return (type >= TYPE_VIRTUAL_MIN && type <= TYPE_VIRTUAL_MAX); }
 constexpr bool busTypeIsHub75(uint8_t type)     { return (type >= TYPE_HUB75MATRIX_MIN && type <= TYPE_HUB75MATRIX_MAX); }
-constexpr bool busTypeIs16bit(uint8_t type)     { return ledType(type) && (ledType(type)->flags & LT_16BIT); }
+constexpr bool busTypeIs16bit(uint8_t type)     { return ledTypeHas(type, LT_16BIT); }
 inline const uint8_t* busTypeGapBits(uint8_t type) { // zero bits after each wire channel (bit-packed types)
   static constexpr uint8_t none[WLEDpixelBus::MAX_CUSTOM_CHANNELS] = {};
-  return ledType(type) ? ledType(type)->gaps : none;
+  const LedTypeDef* t = ledType(type);
+  return t ? t->gaps : none;
 }
-constexpr bool busTypeMustRefresh(uint8_t type) { return ledType(type) && (ledType(type)->flags & LT_REFRESH); }
+constexpr bool busTypeMustRefresh(uint8_t type) { return ledTypeHas(type, LT_REFRESH); }
 constexpr int  busTypeNumPWMPins(uint8_t type)  { return (type - 40); }
 // credit @PaoloTK; for HUB75 the 5 slots store config params (panelW, panelH, chain, rows, cols), not GPIO pins
 constexpr size_t busTypeGetNumberOfPins(uint8_t type) {
