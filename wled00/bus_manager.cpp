@@ -1480,6 +1480,7 @@ static String LEDTypesToJson(const std::vector<LEDType>& types) {
       len += sprintf_P(str + len, PSTR(",m:\""));
       for (uint8_t i = 0; i < ch.numChannels; i++) str[len++] = '0' + ch.channelColors[i];
       len += sprintf_P(str + len, PSTR("\"%s"), ch.invertOutput ? ",io:1" : "");
+      if (ch.tailBits && ch.tailAfter < ch.numChannels) len += sprintf_P(str + len, PSTR(",ta:%u"), (unsigned)ch.tailAfter); // tail bits sit after this many channels
     }
     strcpy_P(str + len, PSTR("},"));
     json += str;
