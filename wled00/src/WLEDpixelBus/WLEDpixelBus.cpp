@@ -369,7 +369,7 @@ PixelBus* createBus(BusDriver driver, int8_t pin, const BusProperties& propertie
     bus->setSuffixData(properties.suffixData, properties.suffixLen);
     bus->setInverted(properties.invertOutput);
     bus->setEncoder(ColorEncoder(properties.channelColors, properties.numChannels, properties.invertMask, properties.is16bit));
-    bus->setTailBits(properties.tailBits);
+    bus->setTailBits(properties.tailBits, properties.tailAfter);
   }
 
   return bus;
