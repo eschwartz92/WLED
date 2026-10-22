@@ -126,6 +126,8 @@ uint32_t Bus::autoWhiteCalc(uint32_t c, uint8_t &ww, uint8_t &cw) const {
   return c;
 }
 
+void Bus::setPixelColorGamma(unsigned pix, uint32_t c) { setPixelColor(pix, gamma32(c)); }
+
 // Default implementation for Bus::getChannelLayout() — returns a static default.
 // BusDigital and BusPlaceholder return their stored layout instead.
 const BusChannelLayout& Bus::getChannelLayout() const {
@@ -408,6 +410,41 @@ void BusDigital::setPixelColor(unsigned pix, uint32_t c) {
 
   _busPtr->setPixelColor(pix, c, cct.wwcw);
 }
+
+#ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+// setPixelColor(pix, gamma32(c)), except that 16-bit LED types get gamma at 16-bit precision: gamma32() rounds to 8 bits
+// first, which merges the dark levels. Only used where every later step gives the same result before or after gamma.
+void BusDigital::setPixelColorGamma(unsigned pix, uint32_t c) {
+  const unsigned aWM = (_gAWM < AW_GLOBAL_DISABLED) ? _gAWM : _autoWhiteMode;
+  if (!_valid || !is16bit() || Bus::_cct >= 1900 || _hasColorOrderMap || aWM == RGBW_MODE_AUTO_ACCURATE) {
+    setPixelColor(pix, gamma32(c)); // Kelvin color balance, white subtraction and per-range color order: 8-bit path
+    return;
+  }
+  if (_reversed) pix = _len - pix - 1;
+  pix += _skip;
+  uint16_t v[WLEDpixelBus::CH_CW + 1] = {}; // 16-bit value per color source (WLEDpixelBus::ChannelSource)
+  if (c > 0) {
+    uint8_t ww, cw;
+    if (hasWhite()) c = autoWhiteCalc(c, ww, cw); // white from the darkest/brightest RGB channel: same before or after gamma
+    v[WLEDpixelBus::CH_R] = gamma16(R(c));
+    v[WLEDpixelBus::CH_G] = gamma16(G(c));
+    v[WLEDpixelBus::CH_B] = gamma16(B(c));
+    v[WLEDpixelBus::CH_W] = gamma16(W(c));
+    if (hasCCT()) { // split white into WW/CW with the fractions setPixelColor() uses (calculateCCT() scales linearly with W)
+      uint8_t fw, fc;
+      calculateCCT(gamma32(c) | 0xFF000000, fw, fc);
+      v[WLEDpixelBus::CH_WW] = (uint32_t)v[WLEDpixelBus::CH_W] * fw / 255;
+      v[WLEDpixelBus::CH_CW] = (uint32_t)v[WLEDpixelBus::CH_W] * fc / 255;
+    }
+    if (BusManager::_useABL) { // same estimate as setPixelColor(): sum of the 8-bit gamma corrected channels
+      const unsigned r = v[WLEDpixelBus::CH_R] >> 8, g = v[WLEDpixelBus::CH_G] >> 8, b = v[WLEDpixelBus::CH_B] >> 8;
+      if (_milliAmpsPerLed < 255) _colorSum += r + g + b + (v[WLEDpixelBus::CH_W] >> 8);
+      else _colorSum += ((r > g) ? ((r > b) ? r : b) : ((g > b) ? g : b)); // WS2815 power model, see setPixelColor()
+    }
+  }
+  _busPtr->setPixelColor16(pix, v);
+}
+#endif
 
 // returns lossly restored color from bus
 uint32_t IRAM_ATTR BusDigital::getPixelColor(unsigned pix) const {
@@ -1635,6 +1672,13 @@ void IRAM_ATTR BusManager::setPixelColor(unsigned pix, uint32_t c) {
   for (auto &bus : busses) {
     if (!bus->containsPixel(pix)) continue;
     bus->setPixelColor(pix - bus->getStart(), c);
+  }
+}
+
+void IRAM_ATTR BusManager::setPixelColorGamma(unsigned pix, uint32_t c) {
+  for (auto &bus : busses) {
+    if (!bus->containsPixel(pix)) continue;
+    bus->setPixelColorGamma(pix - bus->getStart(), c);
   }
 }
 

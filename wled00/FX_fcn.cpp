@@ -1866,10 +1866,10 @@ void WS2812FX::show() {
       if (i == 0 || _pixelCCT[i-1] != _pixelCCT[i]) BusManager::setSegmentCCT(_pixelCCT[i], correctWB);
     }
 
-    uint32_t c = _pixels[i]; // need a copy, do not modify _pixels directly (no byte access allowed on ESP32)
-    if (c > 0 && useGammaCorrection)
-      c = gamma32(c); // apply gamma correction if enabled note: applying gamma after brightness has too much color loss
-    BusManager::setPixelColor(getMappedPixelIndex(i), c);
+    const uint32_t c = _pixels[i]; // need a copy, do not modify _pixels directly (no byte access allowed on ESP32)
+    // gamma correction if enabled, applied by each bus (16-bit LED types at 16-bit precision); note: applying gamma after brightness has too much color loss
+    if (c > 0 && useGammaCorrection) BusManager::setPixelColorGamma(getMappedPixelIndex(i), c);
+    else                             BusManager::setPixelColor(getMappedPixelIndex(i), c);
   }
   Bus::setCCT(oldCCT);  // restore old CCT for ABL adjustments
 

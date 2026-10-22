@@ -48,6 +48,9 @@ class NeoGammaWLEDMethod {
     static void calcGammaTable(float gamma);                        // re-calculates & fills gamma tables
     static inline uint8_t rawGamma8(uint8_t val) { return gammaT[val]; }  // get value from Gamma table (WLED specific, not used by NPB)
     static inline uint8_t rawInverseGamma8(uint8_t val) { return gammaT_inv[val]; }  // get value from inverse Gamma table (WLED specific, not used by NPB)
+#ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+    static inline uint16_t rawGamma16(uint8_t val) { return gammaT16[val]; } // 16-bit result for 16-bit LED types (unity mapping if gamma is off)
+#endif
     static inline uint32_t Correct32(uint32_t color) { // apply Gamma to RGBW32 color (WLED specific, not used by NPB)
       uint8_t  w = byte(color>>24), r = byte(color>>16), g = byte(color>>8), b = byte(color); // extract r, g, b, w channels
       w = gammaT[w]; r = gammaT[r]; g = gammaT[g]; b = gammaT[b];
@@ -56,11 +59,15 @@ class NeoGammaWLEDMethod {
   private:
     static uint8_t gammaT[];
     static uint8_t gammaT_inv[];
+#ifndef WLED_DISABLE_GLOBAL_PIXELBUFFER
+    static uint16_t gammaT16[];
+#endif
 };
 #define gamma32(c) NeoGammaWLEDMethod::Correct32(c)
 #define gamma8(c)  NeoGammaWLEDMethod::rawGamma8(c)
 #define gamma32inv(c) NeoGammaWLEDMethod::inverseGamma32(c)
 #define gamma8inv(c)  NeoGammaWLEDMethod::rawInverseGamma8(c)
+#define gamma16(c)    NeoGammaWLEDMethod::rawGamma16(c)
 [[gnu::hot, gnu::pure]] uint32_t color_blend(uint32_t c1, uint32_t c2 , uint8_t blend);
 inline uint32_t color_blend16(uint32_t c1, uint32_t c2, uint16_t b) { return color_blend(c1, c2, b >> 8); };
 [[gnu::hot, gnu::pure]] uint32_t color_add(uint32_t, uint32_t, bool preserveCR = false);
